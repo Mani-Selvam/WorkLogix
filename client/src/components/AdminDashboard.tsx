@@ -23,22 +23,14 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
-
-// TODO: Remove mock data when implementing real data fetching
-const mockReports = [
-  { id: "1", user: "Sarah Johnson", type: "Morning", date: new Date(), status: "Submitted" },
-  { id: "2", user: "John Smith", type: "Evening", date: new Date(Date.now() - 24 * 60 * 60 * 1000), status: "Submitted" },
-  { id: "3", user: "Emma Davis", type: "Morning", date: new Date(), status: "Pending" },
-];
-
-const mockUsers = [
-  { id: "1", name: "Sarah Johnson", email: "sarah.j@company.com" },
-  { id: "2", name: "John Smith", email: "john.s@company.com" },
-  { id: "3", name: "Emma Davis", email: "emma.d@company.com" },
-];
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { User, Report } from "@shared/schema";
 
 export default function AdminDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, dbUserId } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -46,14 +38,69 @@ export default function AdminDashboard() {
     title: "",
     description: "",
     assignedTo: "",
-    priority: "Medium",
+    priority: "medium",
     deadline: "",
   });
 
+  const { data: stats } = useQuery<{
+    totalUsers: number;
+    todayReports: number;
+    pendingTasks: number;
+    totalFiles: number;
+  }>({
+    queryKey: ['/api/dashboard/stats'],
+  });
+
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ['/api/users'],
+  });
+
+  const { data: reports = [], isLoading: reportsLoading } = useQuery<Report[]>({
+    queryKey: ['/api/reports'],
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (taskData: typeof taskForm) => {
+      const payload = {
+        assignedBy: dbUserId,
+        assignedTo: parseInt(taskData.assignedTo),
+        title: taskData.title,
+        description: taskData.description || null,
+        priority: taskData.priority,
+        deadline: taskData.deadline ? new Date(taskData.deadline).toISOString() : null,
+        status: "pending",
+      };
+      return await apiRequest('POST', '/api/tasks', payload);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task created successfully",
+        description: "The task has been assigned to the user.",
+      });
+      setTaskDialogOpen(false);
+      setTaskForm({ title: "", description: "", assignedTo: "", priority: "medium", deadline: "" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create task",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateTask = () => {
-    console.log("Task created:", taskForm);
-    setTaskDialogOpen(false);
-    setTaskForm({ title: "", description: "", assignedTo: "", priority: "Medium", deadline: "" });
+    if (!taskForm.title || !taskForm.assignedTo) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in task title and assign to a user.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createTaskMutation.mutate(taskForm);
   };
 
   const handleLogout = async () => {
@@ -70,9 +117,15 @@ export default function AdminDashboard() {
     "--sidebar-width-icon": "4rem",
   };
 
-  const filteredReports = mockReports.filter(report =>
-    report.user.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getUserNameById = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user?.displayName || "Unknown User";
+  };
+
+  const filteredReports = reports.filter(report => {
+    const userName = getUserNameById(report.userId);
+    return userName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const adminName = user?.displayName || "Admin";
   const adminAvatar = user?.photoURL || "";
@@ -117,10 +170,30 @@ export default function AdminDashboard() {
           <main className="flex-1 overflow-auto p-6 space-y-8">
             {/* Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <MetricCard title="Total Users" value="24" icon={Users} trend="+3 this month" />
-              <MetricCard title="Today's Reports" value="18" icon={FileText} trend="75% submitted" />
-              <MetricCard title="Pending Tasks" value="12" icon={CheckCircle} trend="3 due today" />
-              <MetricCard title="Uploaded Files" value="156" icon={FolderOpen} trend="+8 today" />
+              <MetricCard 
+                title="Total Users" 
+                value={stats?.totalUsers?.toString() || "0"} 
+                icon={Users} 
+                trend="" 
+              />
+              <MetricCard 
+                title="Today's Reports" 
+                value={stats?.todayReports?.toString() || "0"} 
+                icon={FileText} 
+                trend="" 
+              />
+              <MetricCard 
+                title="Pending Tasks" 
+                value={stats?.pendingTasks?.toString() || "0"} 
+                icon={CheckCircle} 
+                trend="" 
+              />
+              <MetricCard 
+                title="Uploaded Files" 
+                value={stats?.totalFiles?.toString() || "0"} 
+                icon={FolderOpen} 
+                trend="" 
+              />
             </div>
 
             {/* Quick Actions */}
@@ -175,8 +248,8 @@ export default function AdminDashboard() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockUsers.map(user => (
-                              <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                            {users.filter(u => u.role === 'user').map(user => (
+                              <SelectItem key={user.id} value={user.id.toString()}>{user.displayName}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -188,9 +261,9 @@ export default function AdminDashboard() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -205,8 +278,13 @@ export default function AdminDashboard() {
                         data-testid="input-deadline"
                       />
                     </div>
-                    <Button onClick={handleCreateTask} className="w-full" data-testid="button-create-task">
-                      Create Task
+                    <Button 
+                      onClick={handleCreateTask} 
+                      className="w-full" 
+                      data-testid="button-create-task"
+                      disabled={createTaskMutation.isPending}
+                    >
+                      {createTaskMutation.isPending ? "Creating..." : "Create Task"}
                     </Button>
                   </div>
                 </DialogContent>
@@ -257,42 +335,50 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 text-sm font-semibold">User</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold">Type</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold">Date</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold">Status</th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredReports.map((report, index) => (
-                        <tr
-                          key={report.id}
-                          className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
-                          data-testid={`row-report-${report.id}`}
-                        >
-                          <td className="py-3 px-4 text-sm">{report.user}</td>
-                          <td className="py-3 px-4 text-sm">{report.type}</td>
-                          <td className="py-3 px-4 text-sm font-mono text-xs">{format(report.date, "MMM dd, yyyy")}</td>
-                          <td className="py-3 px-4">
-                            <Badge variant={report.status === "Submitted" ? "default" : "secondary"}>
-                              {report.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button variant="ghost" size="sm" data-testid={`button-view-report-${report.id}`}>
-                              View
-                            </Button>
-                          </td>
+                {reportsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : filteredReports.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-semibold">User</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Type</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Tasks</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredReports.map((report, index) => (
+                          <tr
+                            key={report.id}
+                            className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
+                            data-testid={`row-report-${report.id}`}
+                          >
+                            <td className="py-3 px-4 text-sm">{getUserNameById(report.userId)}</td>
+                            <td className="py-3 px-4 text-sm capitalize">{report.reportType}</td>
+                            <td className="py-3 px-4 text-sm font-mono text-xs">{format(new Date(report.createdAt), "MMM dd, yyyy")}</td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground truncate max-w-xs">
+                              {report.plannedTasks || report.completedTasks || "—"}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Button variant="ghost" size="sm" data-testid={`button-view-report-${report.id}`}>
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No reports found
+                  </div>
+                )}
               </CardContent>
             </Card>
           </main>
