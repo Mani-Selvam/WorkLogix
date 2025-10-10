@@ -64,6 +64,7 @@ export interface IStorage {
     totalUsers: number;
     todayReports: number;
     pendingTasks: number;
+    completedTasks: number;
     totalFiles: number;
   }>;
 }
@@ -292,6 +293,7 @@ export class DbStorage implements IStorage {
     totalUsers: number;
     todayReports: number;
     pendingTasks: number;
+    completedTasks: number;
     totalFiles: number;
   }> {
     const today = new Date();
@@ -306,12 +308,16 @@ export class DbStorage implements IStorage {
     const [pendingTaskCount] = await db.select({ count: sql<number>`count(*)` })
       .from(tasks)
       .where(eq(tasks.status, 'pending'));
+    const [completedTaskCount] = await db.select({ count: sql<number>`count(*)` })
+      .from(tasks)
+      .where(eq(tasks.status, 'completed'));
     const [fileCount] = await db.select({ count: sql<number>`count(*)` }).from(fileUploads);
 
     return {
       totalUsers: Number(userCount.count),
       todayReports: Number(todayReportCount.count),
       pendingTasks: Number(pendingTaskCount.count),
+      completedTasks: Number(completedTaskCount.count),
       totalFiles: Number(fileCount.count),
     };
   }

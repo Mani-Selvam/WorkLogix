@@ -46,6 +46,7 @@ export default function AdminDashboard() {
     totalUsers: number;
     todayReports: number;
     pendingTasks: number;
+    completedTasks: number;
     totalFiles: number;
   }>({
     queryKey: ['/api/dashboard/stats'],
@@ -173,7 +174,7 @@ export default function AdminDashboard() {
           {/* Main Content */}
           <main className="flex-1 overflow-auto p-6 space-y-8">
             {/* Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               <MetricCard 
                 title="Total Users" 
                 value={stats?.totalUsers?.toString() || "0"} 
@@ -189,6 +190,12 @@ export default function AdminDashboard() {
               <MetricCard 
                 title="Pending Tasks" 
                 value={stats?.pendingTasks?.toString() || "0"} 
+                icon={CheckCircle} 
+                trend="" 
+              />
+              <MetricCard 
+                title="Completed Tasks" 
+                value={stats?.completedTasks?.toString() || "0"} 
                 icon={CheckCircle} 
                 trend="" 
               />
