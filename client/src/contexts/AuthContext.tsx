@@ -13,6 +13,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   userRole: "admin" | "user" | null;
+  dbUserId: number | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<"admin" | "user" | null>(null);
+  const [dbUserId, setDbUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
@@ -47,17 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (response.ok) {
             const dbUser = await response.json();
             setUserRole(dbUser.role as "admin" | "user");
+            setDbUserId(dbUser.id);
           } else {
             const isAdmin = user.email?.toLowerCase().includes("admin") || false;
             setUserRole(isAdmin ? "admin" : "user");
+            setDbUserId(null);
           }
         } catch (error) {
           console.error("Error syncing user with backend:", error);
           const isAdmin = user.email?.toLowerCase().includes("admin") || false;
           setUserRole(isAdmin ? "admin" : "user");
+          setDbUserId(null);
         }
       } else {
         setUserRole(null);
+        setDbUserId(null);
       }
       
       setLoading(false);
@@ -91,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, userRole }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, userRole, dbUserId }}>
       {children}
     </AuthContext.Provider>
   );

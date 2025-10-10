@@ -7,63 +7,50 @@ import RatingBadge from "./RatingBadge";
 import TimeBasedForm from "./TimeBasedForm";
 import ThemeToggle from "./ThemeToggle";
 import heroImage from "@assets/stock_images/professional_team_co_b1c47478.jpg";
-import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
-
-// TODO: Remove mock data when implementing real data fetching
-const mockTasks = [
-  {
-    id: "1",
-    title: "Complete Q4 Sales Report",
-    description: "Prepare comprehensive sales analysis for Q4 including regional breakdowns, customer segments, and revenue projections.",
-    priority: "High" as const,
-    deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    status: "In Progress" as const,
-    assignedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-  },
-  {
-    id: "2",
-    title: "Update Customer Database",
-    description: "Review and update all customer contact information in the CRM system.",
-    priority: "Medium" as const,
-    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    status: "Pending" as const,
-    assignedDate: new Date(),
-  },
-];
-
-const mockMessages = [
-  {
-    id: "1",
-    message: "New task assigned: Complete Q4 Sales Report. Please review the requirements.",
-    timestamp: new Date(),
-    isRead: false,
-    relatedTask: "Q4 Sales Report",
-  },
-  {
-    id: "2",
-    message: "Great work on the marketing analysis! Keep it up.",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    isRead: true,
-  },
-];
-
-const mockRatings = [
-  {
-    rating: "Excellent" as const,
-    feedback: "Outstanding performance this month! Your reports are always thorough and submitted on time.",
-    timestamp: new Date(),
-    period: "November 2024",
-  },
-];
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Task, Message, Rating } from "@shared/schema";
 
 export default function UserDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, dbUserId } = useAuth();
   const [, setLocation] = useLocation();
-  const [messages, setMessages] = useState(mockMessages);
   const currentHour = new Date().getHours();
   const formType = currentHour >= 9 && currentHour < 12 ? "morning" : currentHour >= 18 && currentHour < 24 ? "evening" : null;
+
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
+    queryKey: ['/api/tasks', dbUserId],
+    enabled: !!dbUserId,
+  });
+
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ['/api/messages', dbUserId],
+    enabled: !!dbUserId,
+  });
+
+  const { data: latestRating, isLoading: ratingLoading } = useQuery<Rating | null>({
+    queryKey: ['/api/ratings', dbUserId, 'latest'],
+    enabled: !!dbUserId,
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (messageId: number) => {
+      return await apiRequest('PATCH', `/api/messages/${messageId}/read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', dbUserId] });
+    },
+  });
+
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
+      return await apiRequest('PATCH', `/api/tasks/${taskId}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', dbUserId] });
+    },
+  });
 
   const handleLogout = async () => {
     try {
@@ -74,14 +61,16 @@ export default function UserDashboard() {
     }
   };
 
-  const markMessageAsRead = (id: string) => {
-    setMessages(messages.map(msg => msg.id === id ? { ...msg, isRead: true } : msg));
+  const markMessageAsRead = (id: number) => {
+    markAsReadMutation.mutate(id);
   };
 
   const userName = user?.displayName || "User";
   const userEmail = user?.email || "";
   const userAvatar = user?.photoURL || "";
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
+
+  const unreadCount = messages.filter(m => !m.readStatus).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,18 +138,40 @@ export default function UserDashboard() {
             {formType && (
               <div>
                 <h3 className="text-xl font-semibold mb-4">Daily Report</h3>
-                <TimeBasedForm type={formType} userName={userName.split(' ')[0]} />
+                <TimeBasedForm type={formType} userName={userName.split(' ')[0]} userId={dbUserId} />
               </div>
             )}
 
             {/* Assigned Tasks */}
             <div>
-              <h3 className="text-xl font-semibold mb-4">Assigned Tasks ({mockTasks.length})</h3>
-              <div className="space-y-4">
-                {mockTasks.map(task => (
-                  <TaskCard key={task.id} {...task} />
-                ))}
-              </div>
+              <h3 className="text-xl font-semibold mb-4">
+                Assigned Tasks ({tasksLoading ? "..." : tasks.length})
+              </h3>
+              {tasksLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : tasks.length > 0 ? (
+                <div className="space-y-4">
+                  {tasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      id={String(task.id)}
+                      title={task.title}
+                      description={task.description || ""}
+                      priority={task.priority as "Low" | "Medium" | "High"}
+                      deadline={task.deadline ? new Date(task.deadline) : undefined}
+                      status={task.status as "Pending" | "In Progress" | "Completed"}
+                      assignedDate={new Date(task.createdAt)}
+                      onStatusChange={(status) => updateTaskStatusMutation.mutate({ taskId: task.id, status })}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No tasks assigned yet
+                </div>
+              )}
             </div>
           </div>
 
@@ -169,27 +180,54 @@ export default function UserDashboard() {
             {/* Messages */}
             <div>
               <h3 className="text-xl font-semibold mb-4">
-                Messages ({messages.filter(m => !m.isRead).length} unread)
+                Messages ({messagesLoading ? "..." : `${unreadCount} unread`})
               </h3>
-              <div className="space-y-3">
-                {messages.map(msg => (
-                  <MessageCard
-                    key={msg.id}
-                    {...msg}
-                    onMarkRead={() => markMessageAsRead(msg.id)}
-                  />
-                ))}
-              </div>
+              {messagesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : messages.length > 0 ? (
+                <div className="space-y-3">
+                  {messages.map(msg => (
+                    <MessageCard
+                      key={msg.id}
+                      id={String(msg.id)}
+                      message={msg.message}
+                      timestamp={new Date(msg.createdAt)}
+                      isRead={msg.readStatus}
+                      relatedTask={msg.relatedTaskId ? `Task #${msg.relatedTaskId}` : undefined}
+                      onMarkRead={() => markMessageAsRead(msg.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No messages
+                </div>
+              )}
             </div>
 
             {/* Ratings & Feedback */}
             <div>
               <h3 className="text-xl font-semibold mb-4">Performance Feedback</h3>
-              <div className="space-y-4">
-                {mockRatings.map((rating, idx) => (
-                  <RatingBadge key={idx} {...rating} />
-                ))}
-              </div>
+              {ratingLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : latestRating ? (
+                <div className="space-y-4">
+                  <RatingBadge
+                    rating={latestRating.rating as "Excellent" | "Good" | "Needs Improvement"}
+                    feedback={latestRating.feedback || ""}
+                    timestamp={new Date(latestRating.createdAt)}
+                    period={latestRating.period}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No ratings yet
+                </div>
+              )}
             </div>
           </div>
         </div>

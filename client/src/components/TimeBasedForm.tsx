@@ -4,20 +4,62 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Sunrise, Moon, Upload } from "lucide-react";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface TimeBasedFormProps {
   type: "morning" | "evening";
   userName: string;
-  onSubmit?: (data: any) => void;
+  userId: number | null;
 }
 
-export default function TimeBasedForm({ type, userName, onSubmit }: TimeBasedFormProps) {
+export default function TimeBasedForm({ type, userName, userId }: TimeBasedFormProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     plannedTasks: "",
     completedTasks: "",
     pendingTasks: "",
     notes: "",
     screenshot: null as File | null,
+  });
+
+  const submitReportMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!userId) throw new Error("User ID is required");
+
+      const reportData = {
+        userId,
+        reportType: type,
+        plannedTasks: data.plannedTasks || null,
+        completedTasks: data.completedTasks || null,
+        pendingTasks: data.pendingTasks || null,
+        notes: data.notes || null,
+      };
+
+      return await apiRequest('POST', '/api/reports', reportData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Report submitted successfully",
+        description: `Your ${type} report has been saved.`,
+      });
+      setFormData({
+        plannedTasks: "",
+        completedTasks: "",
+        pendingTasks: "",
+        notes: "",
+        screenshot: null,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to submit report",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const isMorning = type === "morning";
@@ -29,8 +71,7 @@ export default function TimeBasedForm({ type, userName, onSubmit }: TimeBasedFor
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`${type} form submitted:`, formData);
-    onSubmit?.(formData);
+    submitReportMutation.mutate(formData);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,8 +177,14 @@ export default function TimeBasedForm({ type, userName, onSubmit }: TimeBasedFor
             </div>
           </div>
 
-          <Button type="submit" className="w-full" size="lg" data-testid="button-submit-report">
-            Submit Report
+          <Button 
+            type="submit" 
+            className="w-full" 
+            size="lg" 
+            data-testid="button-submit-report"
+            disabled={submitReportMutation.isPending}
+          >
+            {submitReportMutation.isPending ? "Submitting..." : "Submit Report"}
           </Button>
         </form>
       </CardContent>
