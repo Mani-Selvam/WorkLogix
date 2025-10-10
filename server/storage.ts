@@ -16,6 +16,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | null>;
   getUserById(id: number): Promise<User | null>;
   getUserByFirebaseUid(uid: string): Promise<User | null>;
+  getUserByEmailAndPassword(email: string, password: string): Promise<User | null>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
@@ -81,6 +82,13 @@ export class DbStorage implements IStorage {
 
   async getUserByFirebaseUid(uid: string): Promise<User | null> {
     const result = await db.select().from(users).where(eq(users.firebaseUid, uid)).limit(1);
+    return result[0] || null;
+  }
+
+  async getUserByEmailAndPassword(email: string, password: string): Promise<User | null> {
+    const result = await db.select().from(users).where(
+      and(eq(users.email, email), eq(users.password, password))
+    ).limit(1);
     return result[0] || null;
   }
 

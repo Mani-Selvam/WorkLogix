@@ -6,6 +6,44 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
+  app.post("/api/auth/signup", async (req, res, next) => {
+    try {
+      const { email, displayName, password } = req.body;
+      
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+      
+      const role = email.toLowerCase().includes("admin") ? "admin" : "user";
+      const user = await storage.createUser({
+        email,
+        displayName,
+        password,
+        role,
+      });
+      
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+      
+      const user = await storage.getUserByEmailAndPassword(email, password);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/auth/signin", async (req, res, next) => {
     try {
       const { email, displayName, photoURL, firebaseUid } = req.body;
