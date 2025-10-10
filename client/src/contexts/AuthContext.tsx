@@ -28,14 +28,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
-      // TODO: Replace with actual role from database
-      // For now, checking if email contains "admin" for demo purposes
       if (user) {
-        const isAdmin = user.email?.toLowerCase().includes("admin") || false;
-        setUserRole(isAdmin ? "admin" : "user");
+        try {
+          const response = await fetch('/api/auth/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              firebaseUid: user.uid,
+            }),
+          });
+          
+          if (response.ok) {
+            const dbUser = await response.json();
+            setUserRole(dbUser.role as "admin" | "user");
+          } else {
+            const isAdmin = user.email?.toLowerCase().includes("admin") || false;
+            setUserRole(isAdmin ? "admin" : "user");
+          }
+        } catch (error) {
+          console.error("Error syncing user with backend:", error);
+          const isAdmin = user.email?.toLowerCase().includes("admin") || false;
+          setUserRole(isAdmin ? "admin" : "user");
+        }
       } else {
         setUserRole(null);
       }
