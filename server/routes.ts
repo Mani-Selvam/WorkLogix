@@ -1,72 +1,92 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema } from "@shared/schema";
+import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.post("/api/auth/signup", async (req, res, next) => {
     try {
-      const { email, displayName, password } = req.body;
+      const validatedData = signupSchema.parse(req.body);
       
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ message: "User already exists" });
       }
       
-      const role = email.toLowerCase().includes("admin") ? "admin" : "user";
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const role = validatedData.email.toLowerCase().includes("admin") ? "admin" : "user";
+      
       const user = await storage.createUser({
-        email,
-        displayName,
-        password,
+        email: validatedData.email,
+        displayName: validatedData.displayName,
+        password: hashedPassword,
         role,
       });
       
-      res.json(user);
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       next(error);
     }
   });
 
   app.post("/api/auth/login", async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      const validatedData = loginSchema.parse(req.body);
       
-      const user = await storage.getUserByEmailAndPassword(email, password);
-      if (!user) {
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user || !user.password) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
-      res.json(user);
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       next(error);
     }
   });
 
   app.post("/api/auth/signin", async (req, res, next) => {
     try {
-      const { email, displayName, photoURL, firebaseUid } = req.body;
+      const validatedData = firebaseSigninSchema.parse(req.body);
       
-      let user = await storage.getUserByFirebaseUid(firebaseUid);
+      let user = await storage.getUserByFirebaseUid(validatedData.firebaseUid);
       
       if (!user) {
-        user = await storage.getUserByEmail(email);
+        user = await storage.getUserByEmail(validatedData.email);
         
         if (!user) {
-          const role = email.toLowerCase().includes("admin") ? "admin" : "user";
+          const role = validatedData.email.toLowerCase().includes("admin") ? "admin" : "user";
           user = await storage.createUser({
-            email,
-            displayName,
-            photoURL,
-            firebaseUid,
+            email: validatedData.email,
+            displayName: validatedData.displayName,
+            photoURL: validatedData.photoURL,
+            firebaseUid: validatedData.firebaseUid,
             role,
           });
         }
       }
       
-      res.json(user);
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       next(error);
     }
   });
@@ -74,7 +94,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", async (req, res, next) => {
     try {
       const users = await storage.getAllUsers();
-      res.json(users);
+      const usersWithoutPasswords = users.map(({ password: _, ...user }) => user);
+      res.json(usersWithoutPasswords);
     } catch (error) {
       next(error);
     }
@@ -86,7 +107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json(user);
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       next(error);
     }

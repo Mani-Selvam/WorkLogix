@@ -85,6 +85,24 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const signupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  displayName: z.string().min(2, "Name must be at least 2 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const firebaseSigninSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  displayName: z.string().min(1, "Display name is required"),
+  photoURL: z.string().optional(),
+  firebaseUid: z.string().min(1, "Firebase UID is required"),
+});
+
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
