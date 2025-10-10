@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged 
 } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
+import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +23,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<"admin" | "user" | null>(null);
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       
@@ -42,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
+    if (!isFirebaseConfigured || !auth || !googleProvider) {
+      throw new Error("Firebase is not configured. Please set up Firebase credentials.");
+    }
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
@@ -51,6 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error("Firebase is not configured. Please set up Firebase credentials.");
+    }
     try {
       await firebaseSignOut(auth);
     } catch (error) {
