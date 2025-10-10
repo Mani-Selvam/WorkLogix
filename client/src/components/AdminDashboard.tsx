@@ -1,7 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,9 +18,11 @@ import {
 import AppSidebar from "./AppSidebar";
 import MetricCard from "./MetricCard";
 import ThemeToggle from "./ThemeToggle";
-import { Users, FileText, CheckCircle, FolderOpen, Plus, Search } from "lucide-react";
+import { Users, FileText, CheckCircle, FolderOpen, Plus, Search, LogOut } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
 
 // TODO: Remove mock data when implementing real data fetching
 const mockReports = [
@@ -36,6 +38,8 @@ const mockUsers = [
 ];
 
 export default function AdminDashboard() {
+  const { user, signOut } = useAuth();
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [taskForm, setTaskForm] = useState({
@@ -52,6 +56,15 @@ export default function AdminDashboard() {
     setTaskForm({ title: "", description: "", assignedTo: "", priority: "Medium", deadline: "" });
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setLocation("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   const style = {
     "--sidebar-width": "20rem",
     "--sidebar-width-icon": "4rem",
@@ -60,6 +73,10 @@ export default function AdminDashboard() {
   const filteredReports = mockReports.filter(report =>
     report.user.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const adminName = user?.displayName || "Admin";
+  const adminAvatar = user?.photoURL || "";
+  const adminInitials = adminName.split(' ').map(n => n[0]).join('').toUpperCase();
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
@@ -76,9 +93,22 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-3">
                 <ThemeToggle />
-                <Avatar data-testid="avatar-admin">
-                  <AvatarFallback className="bg-primary text-primary-foreground">A</AvatarFallback>
-                </Avatar>
+                <div className="flex items-center gap-3 pl-3 border-l">
+                  <Avatar data-testid="avatar-admin">
+                    <AvatarImage src={adminAvatar} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {adminInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </header>

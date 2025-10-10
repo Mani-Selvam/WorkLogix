@@ -8,14 +8,8 @@ import TimeBasedForm from "./TimeBasedForm";
 import ThemeToggle from "./ThemeToggle";
 import heroImage from "@assets/stock_images/professional_team_co_b1c47478.jpg";
 import { useState } from "react";
-
-// TODO: Remove mock data when implementing real authentication
-const mockUser = {
-  name: "Sarah Johnson",
-  email: "sarah.johnson@company.com",
-  avatar: "",
-  initials: "SJ",
-};
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
 
 // TODO: Remove mock data when implementing real data fetching
 const mockTasks = [
@@ -65,18 +59,29 @@ const mockRatings = [
 ];
 
 export default function UserDashboard() {
+  const { user, signOut } = useAuth();
+  const [, setLocation] = useLocation();
   const [messages, setMessages] = useState(mockMessages);
   const currentHour = new Date().getHours();
   const formType = currentHour >= 9 && currentHour < 12 ? "morning" : currentHour >= 18 && currentHour < 24 ? "evening" : null;
 
-  const handleLogout = () => {
-    console.log("Logout triggered");
-    // TODO: Implement Firebase logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setLocation("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const markMessageAsRead = (id: string) => {
     setMessages(messages.map(msg => msg.id === id ? { ...msg, isRead: true } : msg));
   };
+
+  const userName = user?.displayName || "User";
+  const userEmail = user?.email || "";
+  const userAvatar = user?.photoURL || "";
+  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,13 +94,13 @@ export default function UserDashboard() {
               <ThemeToggle />
               <div className="flex items-center gap-3 pl-3 border-l">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium">{mockUser.name}</p>
-                  <p className="text-xs text-muted-foreground">{mockUser.email}</p>
+                  <p className="text-sm font-medium">{userName}</p>
+                  <p className="text-xs text-muted-foreground">{userEmail}</p>
                 </div>
                 <Avatar data-testid="avatar-user">
-                  <AvatarImage src={mockUser.avatar} />
+                  <AvatarImage src={userAvatar} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {mockUser.initials}
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <Button
@@ -122,7 +127,7 @@ export default function UserDashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-primary/40 flex items-center justify-center">
           <div className="text-center text-white">
             <h2 className="text-4xl font-bold mb-2">
-              {formType === "morning" ? "Good Morning" : formType === "evening" ? "Good Evening" : "Welcome"} {mockUser.name.split(' ')[0]}!
+              {formType === "morning" ? "Good Morning" : formType === "evening" ? "Good Evening" : "Welcome"} {userName.split(' ')[0]}!
             </h2>
             <p className="text-lg opacity-90">
               {formType === "morning"
@@ -144,7 +149,7 @@ export default function UserDashboard() {
             {formType && (
               <div>
                 <h3 className="text-xl font-semibold mb-4">Daily Report</h3>
-                <TimeBasedForm type={formType} userName={mockUser.name.split(' ')[0]} />
+                <TimeBasedForm type={formType} userName={userName.split(' ')[0]} />
               </div>
             )}
 
