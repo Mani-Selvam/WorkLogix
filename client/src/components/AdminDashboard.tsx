@@ -59,6 +59,10 @@ export default function AdminDashboard() {
     queryKey: ['/api/reports'],
   });
 
+  const { data: allTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ['/api/tasks'],
+  });
+
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: typeof taskForm) => {
       const payload = {
@@ -320,6 +324,126 @@ export default function AdminDashboard() {
                 </Card>
               </a>
             </div>
+
+            {/* Tasks Section */}
+            <Card id="tasks">
+              <CardHeader>
+                <CardTitle>All Tasks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tasksLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : allTasks.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Task</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Assigned To</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Priority</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold">Deadline</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allTasks.map((task: any, index: number) => (
+                          <tr
+                            key={task.id}
+                            className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
+                            data-testid={`row-task-${task.id}`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="font-medium">{task.title}</div>
+                              <div className="text-sm text-muted-foreground">{task.description || '—'}</div>
+                            </td>
+                            <td className="py-3 px-4 text-sm">{getUserNameById(task.assignedTo)}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}>
+                                {task.priority}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.status === 'completed' ? 'default' : 'outline'}>
+                                {task.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm font-mono text-xs">
+                              {task.deadline ? format(new Date(task.deadline), "MMM dd, yyyy") : '—'}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Button variant="ghost" size="sm" data-testid={`button-view-task-${task.id}`}>
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No tasks created yet
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Users Section */}
+            <Card id="users">
+              <CardHeader>
+                <CardTitle>All Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : users.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {users.map((user) => (
+                      <Card key={user.id} data-testid={`card-user-${user.id}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <Avatar>
+                              <AvatarImage src={user.photoURL || ''} />
+                              <AvatarFallback className="bg-primary text-primary-foreground">
+                                {user.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <h4 className="font-semibold">{user.displayName}</h4>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                              {user.role}
+                            </Badge>
+                            {user.role !== 'admin' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                data-testid={`button-remove-user-${user.id}`}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No users found
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Recent Reports Table */}
             <Card id="reports-section">
