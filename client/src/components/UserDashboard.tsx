@@ -62,10 +62,11 @@ export default function UserDashboard() {
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
       return await apiRequest('PATCH', `/api/tasks/${taskId}/status`, { status });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks', dbUserId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/tasks', dbUserId] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/dashboard/stats'] });
     },
   });
 
@@ -170,19 +171,34 @@ export default function UserDashboard() {
                 </div>
               ) : tasks.length > 0 ? (
                 <div className="space-y-4">
-                  {tasks.map(task => (
-                    <TaskCard
-                      key={task.id}
-                      id={String(task.id)}
-                      title={task.title}
-                      description={task.description || ""}
-                      priority={task.priority as "Low" | "Medium" | "High"}
-                      deadline={task.deadline ? new Date(task.deadline) : undefined}
-                      status={task.status as "Pending" | "In Progress" | "Completed"}
-                      assignedDate={new Date(task.createdAt)}
-                      onStatusChange={(status) => updateTaskStatusMutation.mutate({ taskId: task.id, status })}
-                    />
-                  ))}
+                  {tasks.map(task => {
+                    const statusMap: Record<string, "Pending" | "In Progress" | "Completed"> = {
+                      'pending': 'Pending',
+                      'in progress': 'In Progress',
+                      'completed': 'Completed'
+                    };
+                    const priorityMap: Record<string, "Low" | "Medium" | "High"> = {
+                      'low': 'Low',
+                      'medium': 'Medium',
+                      'high': 'High'
+                    };
+                    return (
+                      <TaskCard
+                        key={task.id}
+                        id={String(task.id)}
+                        title={task.title}
+                        description={task.description || ""}
+                        priority={priorityMap[task.priority.toLowerCase()] || 'Medium'}
+                        deadline={task.deadline ? new Date(task.deadline) : undefined}
+                        status={statusMap[task.status.toLowerCase()] || 'Pending'}
+                        assignedDate={new Date(task.createdAt)}
+                        onStatusChange={(status) => {
+                          const dbStatus = status.toLowerCase();
+                          updateTaskStatusMutation.mutate({ taskId: task.id, status: dbStatus });
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
