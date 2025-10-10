@@ -26,7 +26,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, Report } from "@shared/schema";
+import type { User, Report, Task } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { user, signOut, dbUserId } = useAuth();
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     queryKey: ['/api/reports'],
   });
 
-  const { data: allTasks = [], isLoading: tasksLoading } = useQuery({
+  const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
   });
 
