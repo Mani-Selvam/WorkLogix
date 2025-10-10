@@ -21,16 +21,31 @@ export default function UserDashboard() {
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', dbUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks?userId=${dbUserId}`);
+      if (!res.ok) throw new Error('Failed to fetch tasks');
+      return res.json();
+    },
     enabled: !!dbUserId,
   });
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages', dbUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/messages?receiverId=${dbUserId}`);
+      if (!res.ok) throw new Error('Failed to fetch messages');
+      return res.json();
+    },
     enabled: !!dbUserId,
   });
 
   const { data: latestRating, isLoading: ratingLoading } = useQuery<Rating | null>({
     queryKey: ['/api/ratings', dbUserId, 'latest'],
+    queryFn: async () => {
+      const res = await fetch(`/api/ratings?userId=${dbUserId}&latest=true`);
+      if (!res.ok) throw new Error('Failed to fetch rating');
+      return res.json();
+    },
     enabled: !!dbUserId,
   });
 
