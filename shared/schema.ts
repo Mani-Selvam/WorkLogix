@@ -107,6 +107,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  deadline: z.string().nullable().optional().transform(val => val ? new Date(val) : null),
 });
 
 export const insertReportSchema = createInsertSchema(reports).omit({

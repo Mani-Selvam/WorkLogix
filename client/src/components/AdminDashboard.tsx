@@ -290,7 +290,11 @@ export default function AdminDashboard() {
                 </DialogContent>
               </Dialog>
 
-              <Card className="cursor-pointer hover-elevate active-elevate-2">
+              <Card 
+                className="cursor-pointer hover-elevate active-elevate-2"
+                onClick={() => document.querySelector('#reports-section')?.scrollIntoView({ behavior: 'smooth' })}
+                data-testid="card-view-reports"
+              >
                 <CardContent className="p-6 flex items-center gap-4">
                   <div className="p-3 bg-primary/10 rounded-lg">
                     <FileText className="h-6 w-6 text-primary" />
@@ -302,21 +306,23 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover-elevate active-elevate-2">
-                <CardContent className="p-6 flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-lg">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Manage Users</h3>
-                    <p className="text-sm text-muted-foreground">View and rate users</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <a href="#users" className="block">
+                <Card className="cursor-pointer hover-elevate active-elevate-2" data-testid="card-manage-users">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Manage Users</h3>
+                      <p className="text-sm text-muted-foreground">View and rate users</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </a>
             </div>
 
             {/* Recent Reports Table */}
-            <Card>
+            <Card id="reports-section">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <CardTitle>Recent Reports</CardTitle>
