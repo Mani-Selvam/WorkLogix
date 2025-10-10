@@ -1,0 +1,196 @@
+🧩 1️⃣ User Features
+Login System
+
+Users log in using company-preferred name or email.
+
+Time-Based Forms
+
+Morning Login (9:30 – 11:30 AM):
+
+Shows “Good Morning 🌞 [Name]! Please enter your planned tasks.”
+
+Form fields:
+
+Planned Tasks
+
+Notes / Comments
+
+Optional Screenshot Upload
+
+Evening Logout (6:30 – 11:30 PM):
+
+Shows “Good Evening 🌙 [Name]! Please enter your completed work.”
+
+Form fields:
+
+Completed Tasks
+
+Pending Tasks
+
+Optional Screenshot Upload
+
+PDF & Screenshot Uploads
+
+Upload weekly/monthly report PDFs manually.
+
+Upload screenshots daily as proof.
+
+Admin Task Assignment
+
+When Admin assigns a task, it appears under “Assigned Tasks” on the user dashboard.
+
+Each task shows:
+
+Task title
+
+Description
+
+Assigned date
+
+Status (Pending / In Progress / Completed)
+
+User can mark task as completed once done.
+
+Messaging System
+
+Users can read messages from admin (task updates, feedback).
+
+Messages have read/unread status.
+
+Ratings & Feedback
+
+User can see admin’s weekly/monthly rating and feedback comments.
+
+👨‍💼 2️⃣ Admin Features
+Admin Dashboard
+
+Single permanent login.
+
+Overview panels:
+
+Total Users
+
+Today’s Reports
+
+Pending Tasks
+
+Uploaded PDFs
+
+Task Management
+
+Create new task → Assign to one or more users.
+
+Fields:
+
+Task title
+
+Description
+
+Deadline (optional)
+
+Priority (Low / Medium / High)
+
+Tasks sent directly to user dashboards + notification message.
+
+View task status (Pending / In Progress / Completed).
+
+Reports Management
+
+View all submitted reports (daily forms).
+
+View uploaded screenshots + PDFs.
+
+Filter by date, employee, status.
+
+Ratings & Review
+
+Rate users weekly/monthly: Good / Excellent / Needs Improvement.
+
+Leave optional feedback message.
+
+Messaging
+
+Send custom message or task-related update to any user.
+
+View read/unread status of messages.
+
+Data Archive
+
+Auto or manual archive monthly data to save space.
+
+Archived data stored in archive_reports table.
+
+🧱 3️⃣ New Database Tables & Updates
+tasks
+Column	Type	Description
+id	SERIAL	Primary Key
+assigned_by	INT	Reference to admin user (optional)
+assigned_to	INT	Reference to users.id
+title	VARCHAR(255)	Task title
+description	TEXT	Task description
+priority	VARCHAR(20)	'Low', 'Medium', 'High'
+deadline	DATE	Optional deadline
+status	VARCHAR(20)	'Pending', 'In Progress', 'Completed'
+created_at	TIMESTAMP	Task creation time
+updated_at	TIMESTAMP	Last updated time
+messages (Updated for Task Notifications)
+Column	Type	Description
+id	SERIAL	Primary Key
+sender	VARCHAR(50)	'admin' or 'user'
+receiver_id	INT	Reference to users.id
+message	TEXT	Message content
+related_task	INT (nullable)	Reference to tasks.id if task-related
+read_status	BOOLEAN	true if read, false otherwise
+created_at	TIMESTAMP	Time sent
+⚙️ 4️⃣ Workflow Overview
+[Admin Login]
+   ↓
+[Create New Task → Assign to User(s)]
+   ↓
+[Store Task in 'tasks' Table + Send Message Notification]
+   ↓
+[User Login → See Assigned Task in Dashboard]
+   ↓
+[User Marks Task as Completed → Update 'tasks' Table]
+   ↓
+[Admin Dashboard Shows Task Status Updates]
+   ↓
+[Admin Can Send Feedback/Rating → Store in Ratings Table]
+   ↓
+[Monthly Archive → Move Reports to Archive Table]
+
+✨ 5️⃣ Dynamic Prompts
+User Dashboard Prompt
+
+“Good Morning [Name]! 🌞
+You have 2 new assigned tasks from Admin.
+Please fill your morning report and check your assigned tasks below.”
+
+“Good Evening [Name]! 🌙
+Please submit your end-of-day report. Don’t forget to mark your tasks as completed and upload screenshots.”
+
+Admin Dashboard Prompt
+
+“Welcome Admin! 👋
+
+Assign new tasks to users
+
+View all daily reports and uploaded PDFs
+
+Send messages or feedback
+
+Rate weekly/monthly performance
+
+Manage archives and space cleanup.”
+
+✅ 6️⃣ Benefits of This Update
+
+Adds real-time task management between admin and users.
+
+Centralized platform for reporting + communication + tracking.
+
+Improves accountability (admin sees progress).
+
+Keeps data organized with monthly cleanup.
+
+Maintains lightweight storage (no auto PDF generation).
