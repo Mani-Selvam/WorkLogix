@@ -1,17 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { 
-  User, 
-  signInWithPopup, 
-  signOut as firebaseSignOut,
-  onAuthStateChanged 
-} from "firebase/auth";
-import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
+
+interface User {
+  id: number;
+  email: string;
+  displayName: string;
+  photoURL?: string | null;
+  role: "admin" | "user";
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, displayName: string, password: string) => Promise<void>;
+  signOut: () => void;
   userRole: "admin" | "user" | null;
   dbUserId: number | null;
 }
@@ -25,79 +27,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [dbUserId, setDbUserId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setLoading(false);
-      return;
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setUserRole(userData.role);
+      setDbUserId(userData.id);
     }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      
-      if (user) {
-        try {
-          const response = await fetch('/api/auth/signin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              firebaseUid: user.uid,
-            }),
-          });
-          
-          if (response.ok) {
-            const dbUser = await response.json();
-            setUserRole(dbUser.role as "admin" | "user");
-            setDbUserId(dbUser.id);
-          } else {
-            const isAdmin = user.email?.toLowerCase().includes("admin") || false;
-            setUserRole(isAdmin ? "admin" : "user");
-            setDbUserId(null);
-          }
-        } catch (error) {
-          console.error("Error syncing user with backend:", error);
-          const isAdmin = user.email?.toLowerCase().includes("admin") || false;
-          setUserRole(isAdmin ? "admin" : "user");
-          setDbUserId(null);
-        }
-      } else {
-        setUserRole(null);
-        setDbUserId(null);
-      }
-      
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    setLoading(false);
   }, []);
 
-  const signInWithGoogle = async () => {
-    if (!isFirebaseConfigured || !auth || !googleProvider) {
-      throw new Error("Firebase is not configured. Please set up Firebase credentials.");
-    }
+  const login = async (email: string, password: string) => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+      
+      const userData = await response.json();
+      setUser(userData);
+      setUserRole(userData.role);
+      setDbUserId(userData.id);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
-      console.error("Error signing in with Google:", error);
+      console.error("Error logging in:", error);
       throw error;
     }
   };
 
-  const signOut = async () => {
-    if (!isFirebaseConfigured || !auth) {
-      throw new Error("Firebase is not configured. Please set up Firebase credentials.");
-    }
+  const signup = async (email: string, displayName: string, password: string) => {
     try {
-      await firebaseSignOut(auth);
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, displayName, password }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Signup failed');
+      }
+      
+      const userData = await response.json();
+      setUser(userData);
+      setUserRole(userData.role);
+      setDbUserId(userData.id);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error signing up:", error);
       throw error;
     }
+  };
+
+  const signOut = () => {
+    setUser(null);
+    setUserRole(null);
+    setDbUserId(null);
+    localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, userRole, dbUserId }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, signOut, userRole, dbUserId }}>
       {children}
     </AuthContext.Provider>
   );
