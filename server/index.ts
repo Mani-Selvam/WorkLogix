@@ -42,7 +42,15 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    if (request.url === '/ws') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    }
+  });
 
   wss.on('connection', (ws) => {
     ws.on('error', console.error);

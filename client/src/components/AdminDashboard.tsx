@@ -19,13 +19,14 @@ import AppSidebar from "./AppSidebar";
 import MetricCard from "./MetricCard";
 import ThemeToggle from "./ThemeToggle";
 import { Users, FileText, CheckCircle, FolderOpen, Plus, Search, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
 import type { User, Report, Task } from "@shared/schema";
 
 export default function AdminDashboard() {
@@ -41,6 +42,15 @@ export default function AdminDashboard() {
     priority: "medium",
     deadline: "",
   });
+
+  const handleWebSocketMessage = useCallback((data: any) => {
+    if (data.type === 'USERS_UPDATED') {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    }
+  }, []);
+
+  useWebSocket(handleWebSocketMessage);
 
   const { data: stats } = useQuery<{
     totalUsers: number;
@@ -62,6 +72,25 @@ export default function AdminDashboard() {
 
   const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      return await apiRequest('DELETE', `/api/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "User removed successfully",
+        description: "The user has been deleted from the system.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to remove user",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const createTaskMutation = useMutation({
@@ -435,6 +464,8 @@ export default function AdminDashboard() {
                                 size="sm" 
                                 className="text-destructive hover:text-destructive"
                                 data-testid={`button-remove-user-${user.id}`}
+                                onClick={() => deleteUserMutation.mutate(user.id)}
+                                disabled={deleteUserMutation.isPending}
                               >
                                 Remove
                               </Button>
