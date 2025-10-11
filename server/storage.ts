@@ -19,6 +19,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  deleteUser(id: number): Promise<void>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
@@ -96,6 +97,10 @@ export class DbStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async createTask(task: InsertTask): Promise<Task> {

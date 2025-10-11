@@ -124,6 +124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/users/:id", async (req, res, next) => {
+    try {
+      await storage.deleteUser(parseInt(req.params.id));
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Task routes
   app.post("/api/tasks", async (req, res, next) => {
     try {
