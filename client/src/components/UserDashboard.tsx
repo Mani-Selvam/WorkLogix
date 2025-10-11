@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { useCallback } from "react";
 import type { Task, Message, Rating } from "@shared/schema";
 
 export default function UserDashboard() {
@@ -18,6 +20,15 @@ export default function UserDashboard() {
   const [, setLocation] = useLocation();
   const currentHour = new Date().getHours();
   const formType = currentHour >= 9 && currentHour < 12 ? "morning" : currentHour >= 18 && currentHour < 24 ? "evening" : null;
+
+  const handleWebSocketMessage = useCallback((data: any) => {
+    if (data.type === 'USER_DELETED' && data.userId === dbUserId) {
+      signOut();
+      setLocation("/");
+    }
+  }, [dbUserId, signOut, setLocation]);
+
+  useWebSocket(handleWebSocketMessage);
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', dbUserId],
