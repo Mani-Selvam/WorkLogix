@@ -35,6 +35,9 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -67,7 +70,18 @@ export default function AdminDashboard() {
   });
 
   const { data: reports = [], isLoading: reportsLoading } = useQuery<Report[]>({
-    queryKey: ['/api/reports'],
+    queryKey: ['/api/reports', dateFilter.startDate, dateFilter.endDate],
+    queryFn: async () => {
+      let url = '/api/reports';
+      const params = new URLSearchParams();
+      if (dateFilter.startDate) params.append('startDate', dateFilter.startDate);
+      if (dateFilter.endDate) params.append('endDate', dateFilter.endDate);
+      if (params.toString()) url += `?${params.toString()}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch reports');
+      return res.json();
+    },
   });
 
   const { data: allTasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
@@ -160,6 +174,11 @@ export default function AdminDashboard() {
     const userName = getUserNameById(report.userId);
     return userName.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const handleViewReport = (report: Report) => {
+    setSelectedReport(report);
+    setReportDialogOpen(true);
+  };
 
   const adminName = user?.displayName || "Admin";
   const adminAvatar = user?.photoURL || "";
@@ -487,8 +506,24 @@ export default function AdminDashboard() {
             <Card id="reports-section">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <CardTitle>Recent Reports</CardTitle>
-                  <div className="flex items-center gap-2">
+                  <CardTitle>User Reports</CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Input
+                      type="date"
+                      value={dateFilter.startDate}
+                      onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
+                      className="w-40"
+                      placeholder="Start date"
+                      data-testid="input-start-date"
+                    />
+                    <Input
+                      type="date"
+                      value={dateFilter.endDate}
+                      onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
+                      className="w-40"
+                      placeholder="End date"
+                      data-testid="input-end-date"
+                    />
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -533,7 +568,12 @@ export default function AdminDashboard() {
                               {report.plannedTasks || report.completedTasks || "—"}
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <Button variant="ghost" size="sm" data-testid={`button-view-report-${report.id}`}>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleViewReport(report)}
+                                data-testid={`button-view-report-${report.id}`}
+                              >
                                 View
                               </Button>
                             </td>
@@ -552,6 +592,88 @@ export default function AdminDashboard() {
           </main>
         </div>
       </div>
+
+      {/* Report Detail Dialog */}
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Report Details</DialogTitle>
+            <DialogDescription>
+              {selectedReport && `${selectedReport.reportType.charAt(0).toUpperCase() + selectedReport.reportType.slice(1)} report by ${getUserNameById(selectedReport.userId)}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-semibold text-muted-foreground">User</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={users.find(u => u.id === selectedReport.userId)?.photoURL || ''} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {getUserNameById(selectedReport.userId).split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{getUserNameById(selectedReport.userId)}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-muted-foreground">Report Type</Label>
+                  <p className="mt-1 capitalize">
+                    <Badge variant="outline">{selectedReport.reportType}</Badge>
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-muted-foreground">Submitted Date</Label>
+                  <p className="mt-1 text-sm font-mono">{format(new Date(selectedReport.createdAt), "PPP 'at' p")}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-muted-foreground">Report ID</Label>
+                  <p className="mt-1 text-sm font-mono">#{selectedReport.id}</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {selectedReport.plannedTasks && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-muted-foreground">Planned Tasks</Label>
+                      <div className="bg-muted/50 p-3 rounded-lg">
+                        <p className="text-sm whitespace-pre-wrap">{selectedReport.plannedTasks}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedReport.completedTasks && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-muted-foreground">Completed Tasks</Label>
+                      <div className="bg-muted/50 p-3 rounded-lg">
+                        <p className="text-sm whitespace-pre-wrap">{selectedReport.completedTasks}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedReport.pendingTasks && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-muted-foreground">Pending Tasks</Label>
+                      <div className="bg-muted/50 p-3 rounded-lg">
+                        <p className="text-sm whitespace-pre-wrap">{selectedReport.pendingTasks}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedReport.notes && (
+                <div className="border-t pt-4">
+                  <Label className="text-sm font-semibold text-muted-foreground">Additional Notes</Label>
+                  <div className="mt-2 bg-muted/50 p-4 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedReport.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
