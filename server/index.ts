@@ -1,10 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { WebSocketServer } from "ws";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+export let broadcast: (message: any) => void;
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -38,6 +41,20 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws) => {
+    ws.on('error', console.error);
+  });
+
+  broadcast = (message: any) => {
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify(message));
+      }
+    });
+  };
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
