@@ -126,7 +126,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/users/:id", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can delete users" });
+      }
+      
       const userId = parseInt(req.params.id);
+      
+      if (userId === requestingUser.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
       await storage.deleteUser(userId);
       
       const { broadcast } = await import("./index");
