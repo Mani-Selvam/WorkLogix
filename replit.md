@@ -7,10 +7,11 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 - ✅ Firebase Google Authentication implemented
 - ✅ Role-based routing (Admin vs User)
 - ✅ User Dashboard with time-based forms
-- ✅ Admin Dashboard with task management
+- ✅ Admin Dashboard with task management & messaging
 - ✅ Complete UI/UX design with dark mode support
-- 🚧 Backend API implementation pending
-- 🚧 Database schema implementation pending
+- ✅ Backend API implementation complete
+- ✅ Database schema implemented
+- ⚠️ **CRITICAL**: Server-side authentication needs implementation (see Security section below)
 
 ## Architecture
 
@@ -36,15 +37,19 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 ### User Dashboard
 - Time-based forms (Morning 9:30-11:30 AM, Evening 6:30-11:30 PM)
 - Assigned tasks with status tracking
-- Message inbox (admin → user communication)
-- Performance ratings and feedback
+- Private message inbox (admin → user communication)
+- Group announcements (read-only, from admin)
+- Performance ratings display with count
 - File uploads for screenshots and PDFs
 
 ### Admin Dashboard
 - Overview metrics (Total Users, Reports, Tasks, Files)
 - Task creation and assignment
-- User management
+- User management with rating capability
 - Reports management with filtering
+- Communication Center with tabs:
+  - Private Messages: One-on-one chat with users
+  - Announcements: Broadcast messages to all users
 - Ratings and feedback system
 - Archive management
 
@@ -66,14 +71,58 @@ Required Firebase secrets (already configured):
 - `/user` - User dashboard (protected, user role only)
 - `/admin` - Admin dashboard (protected, admin role only)
 
-## Next Steps (Backend Implementation)
-1. Design and implement database schema (users, tasks, messages, reports, ratings, archives)
-2. Create API routes for CRUD operations
-3. Implement proper role management in database
-4. Connect frontend forms to backend APIs
-5. Implement file upload to cloud storage
-6. Add data archiving functionality
-7. Implement proper user data isolation in database queries
+## Database Schema
+Implemented tables:
+- **users**: User accounts with Firebase UID, email, display name, role, photo
+- **tasks**: Task assignments with priority, deadline, status
+- **reports**: Time-based reports (morning/evening)
+- **messages**: Private messages between admin and users
+- **group_messages**: Admin announcements to all users (NEW)
+- **ratings**: Performance ratings and feedback
+- **file_uploads**: File attachments for reports
+- **archive_reports**: Archived historical reports
+
+## API Endpoints
+All REST endpoints implemented:
+- `/api/auth/*` - Authentication (signup, login, Firebase signin)
+- `/api/users/*` - User management
+- `/api/tasks/*` - Task CRUD operations
+- `/api/reports/*` - Report submissions and viewing
+- `/api/messages/*` - Private messaging
+- `/api/group-messages/*` - Group announcements (NEW)
+- `/api/ratings/*` - Performance ratings (NEW)
+- `/api/files/*` - File uploads
+- `/api/archive/*` - Archive management
+- `/api/dashboard/stats` - Dashboard metrics
+
+## CRITICAL SECURITY ISSUE ⚠️
+
+**Current State**: The application uses client-supplied `x-user-id` headers for authentication, which can be forged by any user. This allows:
+- Privilege escalation to admin role
+- Unauthorized access to admin-only features
+- User impersonation
+
+**Required Fix**: Implement proper server-side authentication
+1. **Firebase Admin SDK** (Recommended):
+   - Install `firebase-admin` on backend
+   - Verify Firebase ID tokens server-side
+   - Extract user ID from verified token
+   
+2. **Alternative - Session Management**:
+   - Implement express-session with secure cookies
+   - Store authenticated user in server-side session
+   - Validate session on each request
+
+**Affected Features**:
+- Admin-only operations: user deletion, rating users, sending announcements
+- All features work functionally but lack proper authentication
+
+## Next Steps
+1. **URGENT**: Implement Firebase Admin SDK or proper session authentication
+2. Implement file upload to cloud storage (Firebase Storage or S3)
+3. Add real-time notifications for new messages/tasks
+4. Implement data export functionality
+5. Add email notifications for important events
 
 ## Design Guidelines
 - Clean, modern interface with Linear + Notion hybrid design
@@ -81,13 +130,3 @@ Required Firebase secrets (already configured):
 - Inter font for UI, JetBrains Mono for data/timestamps
 - Responsive design with mobile-first approach
 - Dark mode support throughout
-
-## Mock Data Notes
-Current implementation uses mock data for demonstration:
-- Task lists
-- Messages
-- User lists
-- Reports
-- Ratings
-
-All mock data is marked with `// TODO: Remove mock data` comments and should be replaced with real API calls.

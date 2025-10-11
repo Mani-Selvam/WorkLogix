@@ -1,13 +1,14 @@
 import { db } from "./db";
 import { 
-  users, tasks, reports, messages, ratings, fileUploads, archiveReports,
+  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages,
   type User, type InsertUser,
   type Task, type InsertTask,
   type Report, type InsertReport,
   type Message, type InsertMessage,
   type Rating, type InsertRating,
   type FileUpload, type InsertFileUpload,
-  type ArchiveReport
+  type ArchiveReport,
+  type GroupMessage, type InsertGroupMessage
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -59,6 +60,11 @@ export interface IStorage {
   // Archive operations
   archiveReports(month: number, year: number): Promise<void>;
   getArchivedReports(userId?: number): Promise<ArchiveReport[]>;
+  
+  // Group message operations
+  createGroupMessage(message: InsertGroupMessage): Promise<GroupMessage>;
+  getAllGroupMessages(): Promise<GroupMessage[]>;
+  getRecentGroupMessages(limit: number): Promise<GroupMessage[]>;
   
   // Dashboard stats
   getDashboardStats(): Promise<{
@@ -292,6 +298,21 @@ export class DbStorage implements IStorage {
         .orderBy(desc(archiveReports.originalDate));
     }
     return await db.select().from(archiveReports).orderBy(desc(archiveReports.originalDate));
+  }
+
+  async createGroupMessage(message: InsertGroupMessage): Promise<GroupMessage> {
+    const result = await db.insert(groupMessages).values(message).returning();
+    return result[0];
+  }
+
+  async getAllGroupMessages(): Promise<GroupMessage[]> {
+    return await db.select().from(groupMessages).orderBy(desc(groupMessages.createdAt));
+  }
+
+  async getRecentGroupMessages(limit: number): Promise<GroupMessage[]> {
+    return await db.select().from(groupMessages)
+      .orderBy(desc(groupMessages.createdAt))
+      .limit(limit);
   }
 
   async getDashboardStats(): Promise<{

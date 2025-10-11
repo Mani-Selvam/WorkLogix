@@ -13,7 +13,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useCallback } from "react";
-import type { Task, Message, Rating } from "@shared/schema";
+import type { Task, Message, Rating, GroupMessage } from "@shared/schema";
 
 export default function UserDashboard() {
   const { user, signOut, dbUserId } = useAuth();
@@ -58,6 +58,25 @@ export default function UserDashboard() {
       return res.json();
     },
     enabled: !!dbUserId,
+  });
+
+  const { data: allRatings = [] } = useQuery<Rating[]>({
+    queryKey: ['/api/ratings', dbUserId, 'all'],
+    queryFn: async () => {
+      const res = await fetch(`/api/ratings?userId=${dbUserId}`);
+      if (!res.ok) throw new Error('Failed to fetch ratings');
+      return res.json();
+    },
+    enabled: !!dbUserId,
+  });
+
+  const { data: groupMessages = [] } = useQuery<GroupMessage[]>({
+    queryKey: ['/api/group-messages'],
+    queryFn: async () => {
+      const res = await fetch('/api/group-messages?limit=10');
+      if (!res.ok) throw new Error('Failed to fetch announcements');
+      return res.json();
+    },
   });
 
   const markAsReadMutation = useMutation({
@@ -154,6 +173,20 @@ export default function UserDashboard() {
                 ? "Time to log your progress"
                 : "Let's get to work"}
             </p>
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                <span className="text-sm font-medium" data-testid="text-ratings-count">
+                  ⭐ {allRatings.length} {allRatings.length === 1 ? 'Rating' : 'Ratings'} Received
+                </span>
+              </div>
+              {latestRating && (
+                <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full" data-testid="badge-latest-rating">
+                  <span className="text-sm font-medium">
+                    Latest: {latestRating.rating}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -270,6 +303,38 @@ export default function UserDashboard() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   No ratings yet
+                </div>
+              )}
+            </div>
+
+            {/* Announcements */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">
+                Announcements ({groupMessages.length})
+              </h3>
+              {groupMessages.length > 0 ? (
+                <div className="space-y-3">
+                  {groupMessages.map(announcement => (
+                    <div 
+                      key={announcement.id} 
+                      className="bg-card border rounded-lg p-4 hover-elevate"
+                      data-testid={`announcement-${announcement.id}`}
+                    >
+                      {announcement.title && (
+                        <h4 className="font-semibold text-primary mb-2">{announcement.title}</h4>
+                      )}
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {announcement.message}
+                      </p>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {new Date(announcement.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No announcements
                 </div>
               )}
             </div>

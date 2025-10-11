@@ -18,7 +18,7 @@ import {
 import AppSidebar from "./AppSidebar";
 import MetricCard from "./MetricCard";
 import ThemeToggle from "./ThemeToggle";
-import { Users, FileText, CheckCircle, FolderOpen, Plus, Search, LogOut } from "lucide-react";
+import { Users, FileText, CheckCircle, FolderOpen, Plus, Search, LogOut, MessageSquare, Send } from "lucide-react";
 import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +27,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
-import type { User, Report, Task } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { User, Report, Task, Message, GroupMessage, Rating } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { user, signOut, dbUserId } = useAuth();
@@ -45,6 +46,25 @@ export default function AdminDashboard() {
     priority: "medium",
     deadline: "",
   });
+  
+  const [privateMessageForm, setPrivateMessageForm] = useState({
+    receiverId: "",
+    message: "",
+  });
+  
+  const [groupMessageForm, setGroupMessageForm] = useState({
+    title: "",
+    message: "",
+  });
+  
+  const [ratingForm, setRatingForm] = useState({
+    userId: "",
+    rating: "",
+    feedback: "",
+    period: "weekly",
+  });
+  
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
 
   const handleWebSocketMessage = useCallback((data: any) => {
     if (data.type === 'USERS_UPDATED') {
@@ -88,6 +108,18 @@ export default function AdminDashboard() {
     queryKey: ['/api/tasks'],
   });
 
+  const { data: privateMessages = [] } = useQuery<Message[]>({
+    queryKey: ['/api/messages'],
+  });
+
+  const { data: groupMessages = [] } = useQuery<GroupMessage[]>({
+    queryKey: ['/api/group-messages'],
+  });
+
+  const { data: allRatings = [] } = useQuery<Rating[]>({
+    queryKey: ['/api/ratings'],
+  });
+
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
       return await apiRequest('DELETE', `/api/users/${userId}`);
@@ -102,6 +134,80 @@ export default function AdminDashboard() {
       toast({
         title: "Failed to remove user",
         description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendPrivateMessageMutation = useMutation({
+    mutationFn: async (messageData: typeof privateMessageForm) => {
+      return await apiRequest('POST', '/api/messages', {
+        senderId: dbUserId,
+        receiverId: parseInt(messageData.receiverId),
+        message: messageData.message,
+        readStatus: false,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Message sent successfully",
+      });
+      setPrivateMessageForm({ receiverId: "", message: "" });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to send message",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendGroupMessageMutation = useMutation({
+    mutationFn: async (messageData: typeof groupMessageForm) => {
+      return await apiRequest('POST', '/api/group-messages', {
+        title: messageData.title || null,
+        message: messageData.message,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Announcement sent successfully",
+      });
+      setGroupMessageForm({ title: "", message: "" });
+      queryClient.invalidateQueries({ queryKey: ['/api/group-messages'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to send announcement",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createRatingMutation = useMutation({
+    mutationFn: async (ratingData: typeof ratingForm) => {
+      return await apiRequest('POST', '/api/ratings', {
+        userId: parseInt(ratingData.userId),
+        rating: ratingData.rating,
+        feedback: ratingData.feedback || null,
+        period: ratingData.period,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Rating submitted successfully",
+      });
+      setRatingForm({ userId: "", rating: "", feedback: "", period: "weekly" });
+      setRatingDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/ratings'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to submit rating",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -478,16 +584,29 @@ export default function AdminDashboard() {
                               {user.role}
                             </Badge>
                             {user.role !== 'admin' && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-destructive hover:text-destructive"
-                                data-testid={`button-remove-user-${user.id}`}
-                                onClick={() => deleteUserMutation.mutate(user.id)}
-                                disabled={deleteUserMutation.isPending}
-                              >
-                                Remove
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  data-testid={`button-rate-user-${user.id}`}
+                                  onClick={() => {
+                                    setRatingForm({ ...ratingForm, userId: user.id.toString() });
+                                    setRatingDialogOpen(true);
+                                  }}
+                                >
+                                  Rate
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-destructive hover:text-destructive"
+                                  data-testid={`button-remove-user-${user.id}`}
+                                  onClick={() => deleteUserMutation.mutate(user.id)}
+                                  disabled={deleteUserMutation.isPending}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </CardContent>
@@ -589,6 +708,159 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Messaging Section */}
+            <Card id="messages">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Communication Center
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="private" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="private" data-testid="tab-private-messages">Private Messages</TabsTrigger>
+                    <TabsTrigger value="announcements" data-testid="tab-announcements">Announcements</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="private" className="space-y-4 mt-4">
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+                      <h3 className="font-semibold">Send Private Message</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="message-user">Select User</Label>
+                          <Select 
+                            value={privateMessageForm.receiverId} 
+                            onValueChange={(value) => setPrivateMessageForm({ ...privateMessageForm, receiverId: value })}
+                          >
+                            <SelectTrigger id="message-user" data-testid="select-message-user">
+                              <SelectValue placeholder="Choose a user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {users.filter(u => u.role === 'user').map(user => (
+                                <SelectItem key={user.id} value={user.id.toString()}>
+                                  {user.displayName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="private-message">Message</Label>
+                          <Textarea
+                            id="private-message"
+                            placeholder="Type your message..."
+                            value={privateMessageForm.message}
+                            onChange={(e) => setPrivateMessageForm({ ...privateMessageForm, message: e.target.value })}
+                            data-testid="textarea-private-message"
+                            rows={4}
+                          />
+                        </div>
+                        <Button 
+                          onClick={() => sendPrivateMessageMutation.mutate(privateMessageForm)}
+                          disabled={!privateMessageForm.receiverId || !privateMessageForm.message || sendPrivateMessageMutation.isPending}
+                          data-testid="button-send-private-message"
+                          className="w-full"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {sendPrivateMessageMutation.isPending ? "Sending..." : "Send Message"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="font-semibold">Recent Messages</h3>
+                      <div className="space-y-2">
+                        {privateMessages.slice(0, 5).map((msg) => (
+                          <div key={msg.id} className="bg-card border rounded-lg p-3" data-testid={`message-${msg.id}`}>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium">{getUserNameById(msg.senderId)}</span>
+                                  <span className="text-xs text-muted-foreground">→</span>
+                                  <span className="text-sm font-medium">{getUserNameById(msg.receiverId)}</span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{msg.message}</p>
+                              </div>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {format(new Date(msg.createdAt), "MMM dd, HH:mm")}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {privateMessages.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No messages yet
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="announcements" className="space-y-4 mt-4">
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+                      <h3 className="font-semibold">Send Announcement (All Users)</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="announcement-title">Title (Optional)</Label>
+                          <Input
+                            id="announcement-title"
+                            placeholder="Announcement title..."
+                            value={groupMessageForm.title}
+                            onChange={(e) => setGroupMessageForm({ ...groupMessageForm, title: e.target.value })}
+                            data-testid="input-announcement-title"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="announcement-message">Message</Label>
+                          <Textarea
+                            id="announcement-message"
+                            placeholder="Type your announcement..."
+                            value={groupMessageForm.message}
+                            onChange={(e) => setGroupMessageForm({ ...groupMessageForm, message: e.target.value })}
+                            data-testid="textarea-announcement-message"
+                            rows={4}
+                          />
+                        </div>
+                        <Button 
+                          onClick={() => sendGroupMessageMutation.mutate(groupMessageForm)}
+                          disabled={!groupMessageForm.message || sendGroupMessageMutation.isPending}
+                          data-testid="button-send-announcement"
+                          className="w-full"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {sendGroupMessageMutation.isPending ? "Sending..." : "Send to All Users"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="font-semibold">Recent Announcements</h3>
+                      <div className="space-y-2">
+                        {groupMessages.slice(0, 5).map((msg) => (
+                          <div key={msg.id} className="bg-card border rounded-lg p-4" data-testid={`announcement-${msg.id}`}>
+                            {msg.title && (
+                              <h4 className="font-semibold mb-2">{msg.title}</h4>
+                            )}
+                            <p className="text-sm text-muted-foreground mb-2">{msg.message}</p>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>From: {getUserNameById(msg.senderId)}</span>
+                              <span className="font-mono">{format(new Date(msg.createdAt), "MMM dd, yyyy HH:mm")}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {groupMessages.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No announcements yet
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </main>
         </div>
       </div>
@@ -672,6 +944,73 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating Dialog */}
+      <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rate User</DialogTitle>
+            <DialogDescription>
+              Provide feedback and rating for the selected user
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rating-period">Period</Label>
+              <Select 
+                value={ratingForm.period} 
+                onValueChange={(value) => setRatingForm({ ...ratingForm, period: value })}
+              >
+                <SelectTrigger id="rating-period" data-testid="select-rating-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rating-value">Rating</Label>
+              <Select 
+                value={ratingForm.rating} 
+                onValueChange={(value) => setRatingForm({ ...ratingForm, rating: value })}
+              >
+                <SelectTrigger id="rating-value" data-testid="select-rating-value">
+                  <SelectValue placeholder="Select rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Excellent">⭐⭐⭐⭐⭐ Excellent</SelectItem>
+                  <SelectItem value="Very Good">⭐⭐⭐⭐ Very Good</SelectItem>
+                  <SelectItem value="Good">⭐⭐⭐ Good</SelectItem>
+                  <SelectItem value="Average">⭐⭐ Average</SelectItem>
+                  <SelectItem value="Needs Improvement">⭐ Needs Improvement</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rating-feedback">Feedback (Optional)</Label>
+              <Textarea
+                id="rating-feedback"
+                placeholder="Provide additional feedback..."
+                value={ratingForm.feedback}
+                onChange={(e) => setRatingForm({ ...ratingForm, feedback: e.target.value })}
+                data-testid="textarea-rating-feedback"
+                rows={4}
+              />
+            </div>
+            <Button 
+              onClick={() => createRatingMutation.mutate(ratingForm)}
+              disabled={!ratingForm.userId || !ratingForm.rating || createRatingMutation.isPending}
+              data-testid="button-submit-rating"
+              className="w-full"
+            >
+              {createRatingMutation.isPending ? "Submitting..." : "Submit Rating"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </SidebarProvider>

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
+import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -318,11 +318,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rating routes
   app.post("/api/ratings", async (req, res, next) => {
     try {
-      const validatedRating = insertRatingSchema.parse(req.body);
+      const requestingUserId = req.headers['x-user-id'];
+      
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can rate users" });
+      }
+      
+      const ratingData = {
+        userId: req.body.userId,
+        ratedBy: requestingUser.id,
+        rating: req.body.rating,
+        feedback: req.body.feedback,
+        period: req.body.period,
+      };
+      
+      const validatedRating = insertRatingSchema.parse(ratingData);
       const rating = await storage.createRating(validatedRating);
       
       await storage.createMessage({
-        senderId: validatedRating.ratedBy,
+        senderId: requestingUser.id,
         receiverId: validatedRating.userId,
         message: `You received a new ${validatedRating.period} rating: ${validatedRating.rating}`,
         readStatus: false,
@@ -411,6 +431,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Group message routes
+  app.post("/api/group-messages", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can send announcements" });
+      }
+      
+      const messageData = {
+        senderId: requestingUser.id,
+        title: req.body.title,
+        message: req.body.message,
+      };
+      
+      const validatedMessage = insertGroupMessageSchema.parse(messageData);
+      const message = await storage.createGroupMessage(validatedMessage);
+      res.json(message);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/group-messages", async (req, res, next) => {
+    try {
+      const { limit } = req.query;
+      
+      if (limit) {
+        const messages = await storage.getRecentGroupMessages(parseInt(limit as string));
+        res.json(messages);
+      } else {
+        const messages = await storage.getAllGroupMessages();
+        res.json(messages);
+      }
     } catch (error) {
       next(error);
     }

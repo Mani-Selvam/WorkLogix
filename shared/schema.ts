@@ -80,6 +80,14 @@ export const archiveReports = pgTable("archive_reports", {
   archivedAt: timestamp("archived_at").defaultNow().notNull(),
 });
 
+export const groupMessages = pgTable("group_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  title: varchar("title", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -131,6 +139,11 @@ export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({
   uploadedAt: true,
 });
 
+export const insertGroupMessageSchema = createInsertSchema(groupMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -148,5 +161,8 @@ export type Rating = typeof ratings.$inferSelect;
 
 export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
 export type FileUpload = typeof fileUploads.$inferSelect;
+
+export type InsertGroupMessage = z.infer<typeof insertGroupMessageSchema>;
+export type GroupMessage = typeof groupMessages.$inferSelect;
 
 export type ArchiveReport = typeof archiveReports.$inferSelect;
