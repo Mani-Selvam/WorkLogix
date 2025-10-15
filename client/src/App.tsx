@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "@/components/LoginPage";
-import AdminDashboard from "@/components/AdminDashboard";
 import UserLayout from "@/components/UserLayout";
+import AdminLayout from "@/components/AdminLayout";
 import Overview from "@/pages/user/Overview";
 import Reports from "@/pages/user/Reports";
 import Messages from "@/pages/user/Messages";
@@ -15,6 +15,12 @@ import Announcements from "@/pages/user/Announcements";
 import Tasks from "@/pages/user/Tasks";
 import ReportView from "@/pages/user/ReportView";
 import Ratings from "@/pages/user/Ratings";
+import Dashboard from "@/pages/admin/Dashboard";
+import Users from "@/pages/admin/Users";
+import AdminReports from "@/pages/admin/AdminReports";
+import AdminTasks from "@/pages/admin/AdminTasks";
+import AdminMessages from "@/pages/admin/AdminMessages";
+import AdminRatings from "@/pages/admin/AdminRatings";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: "admin" | "user" }) {
   const { user, loading, userRole } = useAuth();
@@ -72,8 +78,26 @@ function Router() {
       <Route path="/user">
         <Redirect to="/user/overview" />
       </Route>
+      <Route path="/admin/dashboard">
+        {() => <ProtectedRoute component={() => <AdminLayout><Dashboard /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/users">
+        {() => <ProtectedRoute component={() => <AdminLayout><Users /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/reports">
+        {() => <ProtectedRoute component={() => <AdminLayout><AdminReports /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/tasks">
+        {() => <ProtectedRoute component={() => <AdminLayout><AdminTasks /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/messages">
+        {() => <ProtectedRoute component={() => <AdminLayout><AdminMessages /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/ratings">
+        {() => <ProtectedRoute component={() => <AdminLayout><AdminRatings /></AdminLayout>} allowedRole="admin" />}
+      </Route>
       <Route path="/admin">
-        {() => <ProtectedRoute component={AdminDashboard} allowedRole="admin" />}
+        <Redirect to="/admin/dashboard" />
       </Route>
       <Route>
         <div className="min-h-screen flex items-center justify-center bg-background">
