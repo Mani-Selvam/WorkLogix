@@ -8,11 +8,13 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 
 -   ✅ Firebase Google Authentication implemented
 -   ✅ Role-based routing (Admin vs User)
+-   ✅ **NEW**: Multi-page navigation system with sidebar
+-   ✅ **NEW**: Task timer functionality (Start/Pause/Complete with daily tracking)
 -   ✅ User Dashboard with time-based forms
 -   ✅ Admin Dashboard with task management & messaging
 -   ✅ Complete UI/UX design with dark mode support
 -   ✅ Backend API implementation complete
--   ✅ Database schema implemented
+-   ✅ Database schema implemented (including task_time_logs)
 -   ✅ Email notifications with Resend integration
 -   ✅ View Reports feature for users
 -   ⚠️ **CRITICAL**: Server-side authentication needs implementation (see Security section below)
@@ -82,9 +84,21 @@ Required Firebase secrets (already configured):
 
 ## Routes
 
+### Authentication
 -   `/` - Login page (Google Sign-In)
--   `/user` - User dashboard (protected, user role only)
+
+### Admin Routes
 -   `/admin` - Admin dashboard (protected, admin role only)
+
+### User Routes (Protected)
+-   `/user/overview` - Dashboard with statistics and overview
+-   `/user/reports` - Submit morning/evening reports
+-   `/user/messages` - View private messages from admin
+-   `/user/feedback` - Submit feedback
+-   `/user/announcements` - View group announcements
+-   `/user/tasks` - View assigned tasks with timer functionality
+-   `/user/report-view` - View all submitted reports
+-   `/user/ratings` - View performance ratings
 
 ## Database Schema
 
@@ -92,9 +106,10 @@ Implemented tables:
 
 -   **users**: User accounts with Firebase UID, email, display name, role, photo
 -   **tasks**: Task assignments with priority, deadline, status
+-   **task_time_logs**: Daily time tracking for tasks (NEW)
 -   **reports**: Time-based reports (morning/evening)
 -   **messages**: Private messages between admin and users
--   **group_messages**: Admin announcements to all users (NEW)
+-   **group_messages**: Admin announcements to all users
 -   **ratings**: Performance ratings and feedback
 -   **file_uploads**: File attachments for reports
 -   **archive_reports**: Archived historical reports
@@ -140,6 +155,29 @@ All REST endpoints implemented:
 
 ## Recent Updates (October 15, 2025)
 
+### Navigation System Overhaul
+- ✅ Replaced single-page dashboard with multi-page navigation
+- ✅ Left sidebar navigation with 8 sections:
+  1. Overview - Dashboard statistics
+  2. Reports - Submit morning/evening reports
+  3. Messages - Private messages inbox
+  4. Feedback - Submit feedback
+  5. Announcements - View group messages
+  6. Assigned Tasks - Task list with timer
+  7. View Reports - All submitted reports
+  8. Ratings - Performance ratings
+- ✅ UserLayout component with persistent sidebar
+- ✅ Each section is a separate page for better organization
+
+### Task Timer System
+- ✅ Added task_time_logs table for daily time tracking
+- ✅ Start/Pause/Complete buttons on each task
+- ✅ Real-time timer display (HH:MM:SS format)
+- ✅ Daily time tracking per task
+- ✅ Timer state persists across page refreshes
+- ✅ Complete button marks task as "completed" (visible to admin)
+- ✅ Completed tasks show "Completed Today" badge
+
 ### Email Notifications
 - ✅ Integrated Resend for transactional emails
 - ✅ Automatic email notification to maniselvam2023@gmail.com when users submit reports
@@ -147,8 +185,7 @@ All REST endpoints implemented:
 - ✅ Rich HTML email template with proper formatting
 
 ### View Reports Feature
-- ✅ Added "View All Reports" button in User Dashboard
-- ✅ Dialog displays all previously submitted reports
+- ✅ Dedicated page for viewing all submitted reports
 - ✅ Shows all report fields: report type, timestamp, planned/completed/pending tasks, notes
 - ✅ Properly formatted with date/time display using date-fns
 
