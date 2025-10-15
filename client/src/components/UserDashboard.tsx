@@ -317,6 +317,7 @@ export default function UserDashboard() {
                       <TaskCard
                         key={task.id}
                         id={String(task.id)}
+                        userId={dbUserId!}
                         title={task.title}
                         description={task.description || ""}
                         priority={priorityMap[task.priority.toLowerCase()] || 'Medium'}

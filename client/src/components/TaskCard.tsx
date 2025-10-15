@@ -1,12 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Calendar, ChevronDown, ChevronUp, Play, Pause, CheckCircle, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface TaskCardProps {
   id: string;
+  userId: number;
   title: string;
   description: string;
   priority: "Low" | "Medium" | "High";
@@ -30,6 +32,7 @@ const statusColors = {
 
 export default function TaskCard({
   id,
+  userId,
   title,
   description,
   priority,
@@ -40,6 +43,91 @@ export default function TaskCard({
 }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const queryClient = useQueryClient();
+  
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const { data: timeLog, refetch: refetchTimeLog } = useQuery({
+    queryKey: [`/api/tasks/${id}/timer`, userId, today],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks/${id}/timer?userId=${userId}&date=${today}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 1000,
+  });
+
+  useEffect(() => {
+    if (timeLog?.timerStatus === 'running' && timeLog?.timerStartedAt) {
+      const startTime = new Date(timeLog.timerStartedAt).getTime();
+      const baseSeconds = timeLog.totalSeconds || 0;
+      
+      const timer = setInterval(() => {
+        const now = Date.now();
+        const additionalSeconds = Math.floor((now - startTime) / 1000);
+        setElapsedSeconds(baseSeconds + additionalSeconds);
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    } else if (timeLog?.totalSeconds) {
+      setElapsedSeconds(timeLog.totalSeconds);
+    } else {
+      setElapsedSeconds(0);
+    }
+  }, [timeLog]);
+
+  const startTimerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/tasks/${id}/timer/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: today }),
+      });
+      if (!res.ok) throw new Error('Failed to start timer');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTimeLog();
+    },
+  });
+
+  const pauseTimerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/tasks/${id}/timer/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: today }),
+      });
+      if (!res.ok) throw new Error('Failed to pause timer');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTimeLog();
+    },
+  });
+
+  const completeTimerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/tasks/${id}/timer/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: today }),
+      });
+      if (!res.ok) throw new Error('Failed to complete timer');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTimeLog();
+    },
+  });
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleStatusChange = () => {
     const statusFlow: Record<string, "Pending" | "In Progress" | "Completed"> = {
@@ -94,7 +182,56 @@ export default function TaskCard({
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+          <div className="flex items-center gap-2 text-sm font-mono">
+            <Clock className="h-4 w-4" />
+            <span>{formatTime(elapsedSeconds)}</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {timeLog?.timerStatus === 'completed' ? (
+              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completed Today
+              </Badge>
+            ) : (
+              <>
+                {timeLog?.timerStatus === 'running' ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => pauseTimerMutation.mutate()}
+                    disabled={pauseTimerMutation.isPending}
+                  >
+                    <Pause className="h-4 w-4 mr-1" />
+                    Pause
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => startTimerMutation.mutate()}
+                    disabled={startTimerMutation.isPending}
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Start
+                  </Button>
+                )}
+                
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => completeTimerMutation.mutate()}
+                  disabled={completeTimerMutation.isPending}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Complete
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
           <Button
             variant="ghost"
             size="sm"
@@ -113,16 +250,6 @@ export default function TaskCard({
               </>
             )}
           </Button>
-          
-          {currentStatus !== "Completed" && (
-            <Button
-              size="sm"
-              onClick={handleStatusChange}
-              data-testid={`button-mark-progress-${id}`}
-            >
-              {currentStatus === "Pending" ? "Start Task" : "Mark Complete"}
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>
