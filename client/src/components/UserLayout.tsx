@@ -16,6 +16,7 @@ import {
   Menu
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import BottomNav, { BottomNavItem } from "./BottomNav";
 import { useState } from "react";
 
 interface NavItem {
@@ -32,6 +33,14 @@ const navItems: NavItem[] = [
   { path: "/user/announcements", label: "Announcements", icon: Megaphone },
   { path: "/user/tasks", label: "Assigned Tasks", icon: ListTodo },
   { path: "/user/report-view", label: "View Reports", icon: Eye },
+  { path: "/user/ratings", label: "Ratings", icon: Star },
+];
+
+const bottomNavItems: BottomNavItem[] = [
+  { path: "/user/overview", label: "Home", icon: LayoutDashboard },
+  { path: "/user/tasks", label: "Tasks", icon: ListTodo },
+  { path: "/user/reports", label: "Reports", icon: FileText },
+  { path: "/user/messages", label: "Messages", icon: MessageSquare },
   { path: "/user/ratings", label: "Ratings", icon: Star },
 ];
 
@@ -132,10 +141,13 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="container max-w-7xl mx-auto p-3 sm:p-4 md:p-6 lg:p-8">
+          <div className="container max-w-7xl mx-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
             {children}
           </div>
         </div>
+
+        {/* Bottom Navigation for Mobile */}
+        <BottomNav items={bottomNavItems} />
       </main>
     </div>
   );
