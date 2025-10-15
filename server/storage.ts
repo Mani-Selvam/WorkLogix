@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages,
+  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs,
   type User, type InsertUser,
   type Task, type InsertTask,
   type Report, type InsertReport,
@@ -8,7 +8,8 @@ import {
   type Rating, type InsertRating,
   type FileUpload, type InsertFileUpload,
   type ArchiveReport,
-  type GroupMessage, type InsertGroupMessage
+  type GroupMessage, type InsertGroupMessage,
+  type TaskTimeLog, type InsertTaskTimeLog
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -65,6 +66,14 @@ export interface IStorage {
   createGroupMessage(message: InsertGroupMessage): Promise<GroupMessage>;
   getAllGroupMessages(): Promise<GroupMessage[]>;
   getRecentGroupMessages(limit: number): Promise<GroupMessage[]>;
+  
+  // Task time log operations
+  getTaskTimeLog(taskId: number, userId: number, date: string): Promise<TaskTimeLog | null>;
+  createOrUpdateTaskTimeLog(log: InsertTaskTimeLog): Promise<TaskTimeLog>;
+  startTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog>;
+  pauseTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog>;
+  completeTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog>;
+  getTaskTimeLogs(taskId: number, userId: number): Promise<TaskTimeLog[]>;
   
   // Dashboard stats
   getDashboardStats(): Promise<{
@@ -313,6 +322,108 @@ export class DbStorage implements IStorage {
     return await db.select().from(groupMessages)
       .orderBy(desc(groupMessages.createdAt))
       .limit(limit);
+  }
+
+  async getTaskTimeLog(taskId: number, userId: number, date: string): Promise<TaskTimeLog | null> {
+    const result = await db.select().from(taskTimeLogs)
+      .where(and(
+        eq(taskTimeLogs.taskId, taskId),
+        eq(taskTimeLogs.userId, userId),
+        eq(taskTimeLogs.date, date)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createOrUpdateTaskTimeLog(log: InsertTaskTimeLog): Promise<TaskTimeLog> {
+    const existing = await this.getTaskTimeLog(log.taskId, log.userId, log.date);
+    
+    if (existing) {
+      const result = await db.update(taskTimeLogs)
+        .set({ 
+          totalSeconds: log.totalSeconds,
+          timerStartedAt: log.timerStartedAt,
+          timerStatus: log.timerStatus,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(taskTimeLogs.taskId, log.taskId),
+          eq(taskTimeLogs.userId, log.userId),
+          eq(taskTimeLogs.date, log.date)
+        ))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(taskTimeLogs).values(log).returning();
+      return result[0];
+    }
+  }
+
+  async startTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog> {
+    const existing = await this.getTaskTimeLog(taskId, userId, date);
+    
+    const log: InsertTaskTimeLog = {
+      taskId,
+      userId,
+      date,
+      totalSeconds: existing?.totalSeconds || 0,
+      timerStartedAt: new Date(),
+      timerStatus: 'running',
+    };
+    
+    return await this.createOrUpdateTaskTimeLog(log);
+  }
+
+  async pauseTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog> {
+    const existing = await this.getTaskTimeLog(taskId, userId, date);
+    
+    if (!existing || !existing.timerStartedAt) {
+      throw new Error('Timer not running');
+    }
+    
+    const elapsedSeconds = Math.floor((Date.now() - new Date(existing.timerStartedAt).getTime()) / 1000);
+    
+    const log: InsertTaskTimeLog = {
+      taskId,
+      userId,
+      date,
+      totalSeconds: existing.totalSeconds + elapsedSeconds,
+      timerStartedAt: null,
+      timerStatus: 'paused',
+    };
+    
+    return await this.createOrUpdateTaskTimeLog(log);
+  }
+
+  async completeTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog> {
+    const existing = await this.getTaskTimeLog(taskId, userId, date);
+    
+    let totalSeconds = existing?.totalSeconds || 0;
+    
+    if (existing?.timerStartedAt) {
+      const elapsedSeconds = Math.floor((Date.now() - new Date(existing.timerStartedAt).getTime()) / 1000);
+      totalSeconds += elapsedSeconds;
+    }
+    
+    const log: InsertTaskTimeLog = {
+      taskId,
+      userId,
+      date,
+      totalSeconds,
+      timerStartedAt: null,
+      timerStatus: 'completed',
+    };
+    
+    return await this.createOrUpdateTaskTimeLog(log);
+  }
+
+  async getTaskTimeLogs(taskId: number, userId: number): Promise<TaskTimeLog[]> {
+    return await db.select().from(taskTimeLogs)
+      .where(and(
+        eq(taskTimeLogs.taskId, taskId),
+        eq(taskTimeLogs.userId, userId)
+      ))
+      .orderBy(desc(taskTimeLogs.date));
   }
 
   async getDashboardStats(): Promise<{

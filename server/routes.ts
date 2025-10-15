@@ -238,6 +238,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Task timer routes
+  app.get("/api/tasks/:id/timer", async (req, res, next) => {
+    try {
+      const { userId, date } = req.query;
+      if (!userId || !date) {
+        return res.status(400).json({ message: "userId and date are required" });
+      }
+      
+      const timeLog = await storage.getTaskTimeLog(
+        parseInt(req.params.id),
+        parseInt(userId as string),
+        date as string
+      );
+      res.json(timeLog);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tasks/:id/timer/start", async (req, res, next) => {
+    try {
+      const { userId, date } = req.body;
+      if (!userId || !date) {
+        return res.status(400).json({ message: "userId and date are required" });
+      }
+      
+      const timeLog = await storage.startTaskTimer(
+        parseInt(req.params.id),
+        userId,
+        date
+      );
+      res.json(timeLog);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tasks/:id/timer/pause", async (req, res, next) => {
+    try {
+      const { userId, date } = req.body;
+      if (!userId || !date) {
+        return res.status(400).json({ message: "userId and date are required" });
+      }
+      
+      const timeLog = await storage.pauseTaskTimer(
+        parseInt(req.params.id),
+        userId,
+        date
+      );
+      res.json(timeLog);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tasks/:id/timer/complete", async (req, res, next) => {
+    try {
+      const { userId, date } = req.body;
+      if (!userId || !date) {
+        return res.status(400).json({ message: "userId and date are required" });
+      }
+      
+      const timeLog = await storage.completeTaskTimer(
+        parseInt(req.params.id),
+        userId,
+        date
+      );
+      res.json(timeLog);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/tasks/:id/timer/logs", async (req, res, next) => {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+      
+      const timeLogs = await storage.getTaskTimeLogs(
+        parseInt(req.params.id),
+        parseInt(userId as string)
+      );
+      res.json(timeLogs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Report routes
   app.post("/api/reports", async (req, res, next) => {
     try {
