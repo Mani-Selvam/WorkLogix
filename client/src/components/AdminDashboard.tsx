@@ -298,17 +298,17 @@ export default function AdminDashboard() {
         <div className="flex flex-col flex-1">
           {/* Header */}
           <header className="sticky top-0 z-40 bg-card border-b border-card-border shadow-sm">
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+                <h1 className="text-lg sm:text-2xl font-bold">Admin Dashboard</h1>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <ThemeToggle />
-                <div className="flex items-center gap-3 pl-3 border-l">
-                  <Avatar data-testid="avatar-admin">
+                <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10" data-testid="avatar-admin">
                     <AvatarImage src={adminAvatar} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
                       {adminInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -317,8 +317,9 @@ export default function AdminDashboard() {
                     size="icon"
                     onClick={handleLogout}
                     data-testid="button-logout"
+                    className="h-8 w-8 sm:h-10 sm:w-10"
                   >
-                    <LogOut className="h-5 w-5" />
+                    <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </div>
               </div>
@@ -326,9 +327,9 @@ export default function AdminDashboard() {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-6 space-y-8">
+          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 md:space-y-8">
             {/* Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
               <MetricCard 
                 title="Total Users" 
                 value={stats?.totalUsers?.toString() || "0"} 
@@ -362,7 +363,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
               <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogTrigger asChild>
                   <Card className="cursor-pointer hover-elevate active-elevate-2" data-testid="card-create-task">
@@ -624,14 +625,14 @@ export default function AdminDashboard() {
             {/* Recent Reports Table */}
             <Card id="reports-section">
               <CardHeader>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                   <CardTitle>User Reports</CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                     <Input
                       type="date"
                       value={dateFilter.startDate}
                       onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
-                      className="w-40"
+                      className="w-full sm:w-40"
                       placeholder="Start date"
                       data-testid="input-start-date"
                     />
@@ -639,15 +640,15 @@ export default function AdminDashboard() {
                       type="date"
                       value={dateFilter.endDate}
                       onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
-                      className="w-40"
+                      className="w-full sm:w-40"
                       placeholder="End date"
                       data-testid="input-end-date"
                     />
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search by user..."
-                        className="pl-9 w-64"
+                        className="pl-9 w-full sm:w-64"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         data-testid="input-search-reports"

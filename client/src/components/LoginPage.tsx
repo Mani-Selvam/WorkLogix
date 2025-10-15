@@ -58,11 +58,11 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/40"></div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-background">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-foreground mb-2">WorkLogix</h1>
-            <p className="text-muted-foreground">Employee Work Tracking & Task Management</p>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">WorkLogix</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Employee Work Tracking & Task Management</p>
           </div>
 
           <Tabs defaultValue="login" className="w-full">

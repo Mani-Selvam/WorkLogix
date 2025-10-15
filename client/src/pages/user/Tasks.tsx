@@ -35,10 +35,10 @@ export default function Tasks() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Assigned Tasks</h2>
-        <p className="text-muted-foreground mt-1">{tasks.length} task{tasks.length !== 1 ? 's' : ''} assigned</p>
+        <h2 className="text-2xl sm:text-3xl font-bold">Assigned Tasks</h2>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">{tasks.length} task{tasks.length !== 1 ? 's' : ''} assigned</p>
       </div>
 
       {tasks.length > 0 ? (

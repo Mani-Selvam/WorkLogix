@@ -27,10 +27,10 @@ export default function ReportView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">View Reports</h2>
-        <p className="text-muted-foreground mt-1">All submitted reports</p>
+        <h2 className="text-2xl sm:text-3xl font-bold">View Reports</h2>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">All submitted reports</p>
       </div>
 
       {reports.length > 0 ? (
@@ -38,11 +38,11 @@ export default function ReportView() {
           {reports.map(report => (
             <Card key={report.id} data-testid={`card-report-${report.id}`}>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <CardTitle className="text-lg">
                     {report.reportType === 'morning' ? 'Morning' : 'Evening'} Report
                   </CardTitle>
-                  <Badge variant="outline" className="font-mono text-xs">
+                  <Badge variant="outline" className="font-mono text-xs w-fit">
                     {format(new Date(report.createdAt), 'MMM dd, yyyy HH:mm')}
                   </Badge>
                 </div>

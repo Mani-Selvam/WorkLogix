@@ -16,65 +16,65 @@
 
   --background: 0 0% 100%;
 
-  --foreground: 222 47% 11%;
+  --foreground: 215 20% 15%;
 
-  --border: 214 32% 91%;
+  --border: 214 20% 88%;
 
-  --card: 220 14% 96%;
+  --card: 0 0% 98%;
 
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 215 20% 15%;
 
-  --card-border: 214 20% 88%;
+  --card-border: 214 15% 90%;
 
-  --sidebar: 217 18% 93%;
+  --sidebar: 210 20% 96%;
 
-  --sidebar-foreground: 222 47% 11%;
+  --sidebar-foreground: 215 20% 15%;
 
-  --sidebar-border: 214 20% 85%;
+  --sidebar-border: 214 15% 88%;
 
-  --sidebar-primary: 234 89% 45%;
+  --sidebar-primary: 215 25% 27%;
 
-  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 220 14% 88%;
+  --sidebar-accent: 210 15% 92%;
 
-  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-accent-foreground: 215 20% 15%;
 
-  --sidebar-ring: 234 89% 45%;
+  --sidebar-ring: 215 25% 27%;
 
-  --popover: 220 14% 91%;
+  --popover: 0 0% 98%;
 
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 215 20% 15%;
 
-  --popover-border: 214 20% 82%;
+  --popover-border: 214 15% 90%;
 
-  --primary: 234 89% 45%;
+  --primary: 215 25% 27%;
 
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 217 18% 86%;
+  --secondary: 210 15% 92%;
 
-  --secondary-foreground: 222 47% 11%;
+  --secondary-foreground: 215 20% 15%;
 
-  --muted: 217 12% 89%;
+  --muted: 210 15% 94%;
 
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 215 12% 45%;
 
-  --accent: 220 10% 90%;
+  --accent: 210 15% 94%;
 
-  --accent-foreground: 222 47% 11%;
+  --accent-foreground: 215 20% 15%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 72% 51%;
 
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 214 32% 80%;
-  --ring: 234 89% 45%;
-  --chart-1: 234 89% 35%;
-  --chart-2: 142 76% 36%;
-  --chart-3: 38 92% 40%;
-  --chart-4: 280 60% 40%;
-  --chart-5: 0 84% 50%;
+  --input: 214 15% 85%;
+  --ring: 215 25% 27%;
+  --chart-1: 215 70% 50%;
+  --chart-2: 142 60% 45%;
+  --chart-3: 38 85% 55%;
+  --chart-4: 280 50% 50%;
+  --chart-5: 0 72% 51%;
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -91,11 +91,11 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  /* Gradient colors for time-based forms */
-  --morning-gradient-from: 38 92% 50%;
-  --morning-gradient-to: 27 96% 61%;
-  --evening-gradient-from: 258 90% 66%;
-  --evening-gradient-to: 234 89% 60%;
+  /* Gradient colors for time-based forms - simplified business tones */
+  --morning-gradient-from: 38 70% 55%;
+  --morning-gradient-to: 45 75% 60%;
+  --evening-gradient-from: 215 50% 45%;
+  --evening-gradient-to: 230 55% 50%;
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
 
@@ -138,67 +138,67 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 220 15% 8%;
+  --background: 215 25% 10%;
 
-  --foreground: 210 20% 95%;
+  --foreground: 210 15% 90%;
 
-  --border: 220 15% 18%;
+  --border: 215 20% 20%;
 
-  --card: 220 15% 12%;
+  --card: 215 22% 14%;
 
-  --card-foreground: 210 20% 95%;
+  --card-foreground: 210 15% 90%;
 
-  --card-border: 220 15% 16%;
+  --card-border: 215 20% 18%;
 
-  --sidebar: 220 15% 10%;
+  --sidebar: 215 25% 12%;
 
-  --sidebar-foreground: 210 20% 95%;
+  --sidebar-foreground: 210 15% 90%;
 
-  --sidebar-border: 220 15% 15%;
+  --sidebar-border: 215 20% 17%;
 
-  --sidebar-primary: 220 75% 50%;
+  --sidebar-primary: 210 20% 85%;
 
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary-foreground: 215 25% 12%;
 
-  --sidebar-accent: 220 15% 16%;
+  --sidebar-accent: 215 20% 18%;
 
-  --sidebar-accent-foreground: 210 20% 95%;
+  --sidebar-accent-foreground: 210 15% 90%;
 
-  --sidebar-ring: 220 75% 50%;
+  --sidebar-ring: 210 20% 85%;
 
-  --popover: 220 15% 12%;
+  --popover: 215 22% 14%;
 
-  --popover-foreground: 210 20% 95%;
+  --popover-foreground: 210 15% 90%;
 
-  --popover-border: 220 15% 18%;
+  --popover-border: 215 20% 20%;
 
-  --primary: 220 75% 50%;
+  --primary: 210 20% 85%;
 
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: 215 25% 12%;
 
-  --secondary: 220 10% 20%;
+  --secondary: 215 15% 22%;
 
-  --secondary-foreground: 210 20% 95%;
+  --secondary-foreground: 210 15% 90%;
 
-  --muted: 220 10% 18%;
+  --muted: 215 15% 20%;
 
-  --muted-foreground: 220 8% 60%;
+  --muted-foreground: 215 10% 55%;
 
-  --accent: 220 15% 15%;
+  --accent: 215 15% 20%;
 
-  --accent-foreground: 210 20% 95%;
+  --accent-foreground: 210 15% 90%;
 
-  --destructive: 0 70% 55%;
+  --destructive: 0 65% 55%;
 
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 15% 20%;
-  --ring: 220 75% 50%;
-  --chart-1: 234 100% 70%;
-  --chart-2: 142 70% 55%;
-  --chart-3: 38 92% 65%;
-  --chart-4: 280 60% 70%;
-  --chart-5: 0 84% 70%;
+  --input: 215 15% 22%;
+  --ring: 210 20% 85%;
+  --chart-1: 215 60% 65%;
+  --chart-2: 142 55% 60%;
+  --chart-3: 38 70% 65%;
+  --chart-4: 280 45% 65%;
+  --chart-5: 0 65% 60%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.30);
   --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.35);
@@ -209,11 +209,11 @@
   --shadow-xl: 0px 16px 32px 0px hsl(0 0% 0% / 0.40), 0px 8px 16px -4px hsl(0 0% 0% / 0.38);
   --shadow-2xl: 0px 24px 48px 0px hsl(0 0% 0% / 0.45);
 
-  /* Gradient colors for time-based forms */
-  --morning-gradient-from: 38 92% 60%;
-  --morning-gradient-to: 27 96% 70%;
-  --evening-gradient-from: 258 90% 70%;
-  --evening-gradient-to: 234 100% 68%;
+  /* Gradient colors for time-based forms - simplified business tones */
+  --morning-gradient-from: 38 60% 55%;
+  --morning-gradient-to: 45 65% 60%;
+  --evening-gradient-from: 215 40% 50%;
+  --evening-gradient-to: 230 45% 55%;
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
 

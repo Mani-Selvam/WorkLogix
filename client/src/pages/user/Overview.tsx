@@ -59,13 +59,13 @@ export default function Overview() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Overview</h2>
-        <p className="text-muted-foreground mt-1">Your work summary and statistics</p>
+        <h2 className="text-2xl sm:text-3xl font-bold">Overview</h2>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">Your work summary and statistics</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.title} data-testid={`card-stat-${stat.title.toLowerCase().replace(' ', '-')}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">

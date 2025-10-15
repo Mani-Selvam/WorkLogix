@@ -88,16 +88,16 @@ export default function TimeBasedForm({
 
     return (
         <Card className="overflow-hidden border-0 shadow-lg" data-testid={`form-${type}`}>
-            <div className={`${headerBgClass} p-6 border-b`}>
-                <div className="flex items-start gap-4">
-                    <div className="p-3 bg-background/80 backdrop-blur rounded-xl shadow-md">
-                        <Icon className={`h-10 w-10 ${iconColorClass}`} />
+            <div className={`${headerBgClass} p-4 sm:p-6 border-b`}>
+                <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="p-2 sm:p-3 bg-background/80 backdrop-blur rounded-xl shadow-md">
+                        <Icon className={`h-8 w-8 sm:h-10 sm:w-10 ${iconColorClass}`} />
                     </div>
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-foreground">
+                        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                             {greeting} {userName}!
                         </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                             {isMorning
                                 ? "Please enter your planned tasks for today"
                                 : "Please enter your completed work for today"}
@@ -105,8 +105,8 @@ export default function TimeBasedForm({
                     </div>
                 </div>
             </div>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+            <CardContent className="p-4 sm:p-6">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                     {isMorning ? (
                         <>
                             <div className="space-y-2">
@@ -188,10 +188,10 @@ export default function TimeBasedForm({
                     )}
 
                     <div className="space-y-2">
-                        <Label htmlFor="screenshot">
+                        <Label htmlFor="screenshot" className="text-sm sm:text-base">
                             Screenshot Upload (Optional)
                         </Label>
-                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover-elevate cursor-pointer">
+                        <div className="border-2 border-dashed rounded-lg p-4 sm:p-6 text-center hover-elevate cursor-pointer">
                             <input
                                 type="file"
                                 id="screenshot"
@@ -203,8 +203,8 @@ export default function TimeBasedForm({
                             <label
                                 htmlFor="screenshot"
                                 className="cursor-pointer flex flex-col items-center gap-2">
-                                <Upload className="h-8 w-8 text-muted-foreground" />
-                                <p className="text-sm text-muted-foreground">
+                                <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                                <p className="text-xs sm:text-sm text-muted-foreground">
                                     {formData.screenshot
                                         ? formData.screenshot.name
                                         : "Click to upload screenshot"}
