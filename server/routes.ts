@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { sendReportNotification } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
@@ -242,6 +243,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedReport = insertReportSchema.parse(req.body);
       const report = await storage.createReport(validatedReport);
+      
+      // Get user information for email
+      const user = await storage.getUserById(validatedReport.userId);
+      if (user) {
+        // Send email notification asynchronously (don't wait for it)
+        sendReportNotification({
+          userName: user.displayName,
+          reportType: validatedReport.reportType,
+          plannedTasks: validatedReport.plannedTasks,
+          completedTasks: validatedReport.completedTasks,
+          pendingTasks: validatedReport.pendingTasks,
+          notes: validatedReport.notes,
+          createdAt: report.createdAt,
+        }).catch(err => console.error('Failed to send email notification:', err));
+      }
+      
       res.json(report);
     } catch (error) {
       next(error);
