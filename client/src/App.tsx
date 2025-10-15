@@ -41,32 +41,36 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any;
   return <Component />;
 }
 
-function UserRoutes() {
-  return (
-    <UserLayout>
-      <Switch>
-        <Route path="/user/overview" component={Overview} />
-        <Route path="/user/reports" component={Reports} />
-        <Route path="/user/messages" component={Messages} />
-        <Route path="/user/feedback" component={Feedback} />
-        <Route path="/user/announcements" component={Announcements} />
-        <Route path="/user/tasks" component={Tasks} />
-        <Route path="/user/report-view" component={ReportView} />
-        <Route path="/user/ratings" component={Ratings} />
-        <Route path="/user">
-          <Redirect to="/user/overview" />
-        </Route>
-      </Switch>
-    </UserLayout>
-  );
-}
-
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LoginPage} />
-      <Route path="/user/:rest*">
-        {() => <ProtectedRoute component={UserRoutes} allowedRole="user" />}
+      <Route path="/user/overview">
+        {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/reports">
+        {() => <ProtectedRoute component={() => <UserLayout><Reports /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/messages">
+        {() => <ProtectedRoute component={() => <UserLayout><Messages /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/feedback">
+        {() => <ProtectedRoute component={() => <UserLayout><Feedback /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/announcements">
+        {() => <ProtectedRoute component={() => <UserLayout><Announcements /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/tasks">
+        {() => <ProtectedRoute component={() => <UserLayout><Tasks /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/report-view">
+        {() => <ProtectedRoute component={() => <UserLayout><ReportView /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user/ratings">
+        {() => <ProtectedRoute component={() => <UserLayout><Ratings /></UserLayout>} allowedRole="user" />}
+      </Route>
+      <Route path="/user">
+        <Redirect to="/user/overview" />
       </Route>
       <Route path="/admin">
         {() => <ProtectedRoute component={AdminDashboard} allowedRole="admin" />}
