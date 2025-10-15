@@ -68,18 +68,17 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               
               return (
                 <li key={item.path}>
-                  <Link href={item.path}>
-                    <a
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-accent hover:text-accent-foreground"
-                      }`}
-                      data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </a>
+                  <Link 
+                    href={item.path}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-sm font-medium">{item.label}</span>
                   </Link>
                 </li>
               );
