@@ -13,6 +13,8 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 -   ✅ Complete UI/UX design with dark mode support
 -   ✅ Backend API implementation complete
 -   ✅ Database schema implemented
+-   ✅ Email notifications with Resend integration
+-   ✅ View Reports feature for users
 -   ⚠️ **CRITICAL**: Server-side authentication needs implementation (see Security section below)
 
 ## Architecture
@@ -42,6 +44,7 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 ### User Dashboard
 
 -   Time-based forms (Morning 9:30-11:30 AM, Evening 6:30-11:30 PM)
+-   View submitted reports with "View All Reports" button showing all report fields
 -   Assigned tasks with status tracking
 -   Private message inbox (admin → user communication)
 -   Group announcements (read-only, from admin)
@@ -64,8 +67,9 @@ WorkLogix is a comprehensive employee work tracking and task management system b
 
 -   **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
 -   **Authentication**: Firebase (Google Sign-In)
--   **Backend**: Express.js (to be implemented)
--   **Database**: PostgreSQL (to be implemented)
+-   **Backend**: Express.js
+-   **Database**: PostgreSQL
+-   **Email**: Resend (for transactional emails)
 -   **State Management**: React Query, Context API
 
 ## Environment Variables
@@ -134,13 +138,26 @@ All REST endpoints implemented:
 -   Admin-only operations: user deletion, rating users, sending announcements
 -   All features work functionally but lack proper authentication
 
+## Recent Updates (October 15, 2025)
+
+### Email Notifications
+- ✅ Integrated Resend for transactional emails
+- ✅ Automatic email notification to maniselvam2023@gmail.com when users submit reports
+- ✅ Email includes all report details: planned tasks, completed tasks, pending tasks, and notes
+- ✅ Rich HTML email template with proper formatting
+
+### View Reports Feature
+- ✅ Added "View All Reports" button in User Dashboard
+- ✅ Dialog displays all previously submitted reports
+- ✅ Shows all report fields: report type, timestamp, planned/completed/pending tasks, notes
+- ✅ Properly formatted with date/time display using date-fns
+
 ## Next Steps
 
 1. **URGENT**: Implement Firebase Admin SDK or proper session authentication
 2. Implement file upload to cloud storage (Firebase Storage or S3)
 3. Add real-time notifications for new messages/tasks
 4. Implement data export functionality
-5. Add email notifications for important events
 
 ## Design Guidelines
 
