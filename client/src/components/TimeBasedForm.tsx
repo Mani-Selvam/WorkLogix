@@ -69,9 +69,10 @@ export default function TimeBasedForm({
     const isMorning = type === "morning";
     const greeting = isMorning ? "Good Morning" : "Good Evening";
     const Icon = isMorning ? Sunrise : Moon;
-    const gradientClass = isMorning
-        ? "bg-gradient-to-r from-[hsl(var(--morning-gradient-from))] to-[hsl(var(--morning-gradient-to))]"
-        : "bg-gradient-to-r from-[hsl(var(--evening-gradient-from))] to-[hsl(var(--evening-gradient-to))]";
+    const headerBgClass = isMorning
+        ? "bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950/30 dark:to-orange-950/30"
+        : "bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-950/30 dark:to-indigo-950/30";
+    const iconColorClass = isMorning ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400";
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,25 +87,24 @@ export default function TimeBasedForm({
     };
 
     return (
-        <Card className="overflow-hidden" data-testid={`form-${type}`}>
-            <div className={`${gradientClass} opacity-15 h-24`} />
-            <CardHeader className="-mt-16 relative">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-3 bg-card rounded-lg shadow-sm">
-                        <Icon className="h-8 w-8 text-primary" />
+        <Card className="overflow-hidden border-0 shadow-lg" data-testid={`form-${type}`}>
+            <div className={`${headerBgClass} p-6 border-b`}>
+                <div className="flex items-start gap-4">
+                    <div className="p-3 bg-background/80 backdrop-blur rounded-xl shadow-md">
+                        <Icon className={`h-10 w-10 ${iconColorClass}`} />
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold">
+                    <div className="flex-1">
+                        <h2 className="text-2xl font-bold text-foreground">
                             {greeting} {userName}!
                         </h2>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mt-1">
                             {isMorning
                                 ? "Please enter your planned tasks for today"
                                 : "Please enter your completed work for today"}
                         </p>
                     </div>
                 </div>
-            </CardHeader>
+            </div>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {isMorning ? (
