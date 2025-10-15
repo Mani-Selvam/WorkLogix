@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { LogOut, Eye } from "lucide-react";
 import TaskCard from "./TaskCard";
 import MessageCard from "./MessageCard";
 import RatingBadge from "./RatingBadge";
@@ -12,12 +12,17 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
-import { useCallback } from "react";
-import type { Task, Message, Rating, GroupMessage } from "@shared/schema";
+import { useCallback, useState } from "react";
+import type { Task, Message, Rating, GroupMessage, Report } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 export default function UserDashboard() {
   const { user, signOut, dbUserId } = useAuth();
   const [, setLocation] = useLocation();
+  const [viewReportsOpen, setViewReportsOpen] = useState(false);
   const currentHour = new Date().getHours();
   const formType = currentHour >= 9 && currentHour < 12 ? "morning" : currentHour >= 18 && currentHour < 24 ? "evening" : null;
 
@@ -77,6 +82,16 @@ export default function UserDashboard() {
       if (!res.ok) throw new Error('Failed to fetch announcements');
       return res.json();
     },
+  });
+
+  const { data: userReports = [], isLoading: reportsLoading } = useQuery<Report[]>({
+    queryKey: ['/api/reports', dbUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports?userId=${dbUserId}`);
+      if (!res.ok) throw new Error('Failed to fetch reports');
+      return res.json();
+    },
+    enabled: !!dbUserId,
   });
 
   const markAsReadMutation = useMutation({
@@ -203,6 +218,78 @@ export default function UserDashboard() {
                 <TimeBasedForm type={formType} userName={userName.split(' ')[0]} userId={dbUserId} />
               </div>
             )}
+
+            {/* View Reports Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">My Submitted Reports</h3>
+                <Dialog open={viewReportsOpen} onOpenChange={setViewReportsOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" data-testid="button-view-reports">
+                      <Eye className="h-4 w-4 mr-2" />
+                      View All Reports ({userReports.length})
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>My Submitted Reports</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      {reportsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                      ) : userReports.length > 0 ? (
+                        userReports.map((report) => (
+                          <Card key={report.id} data-testid={`card-report-${report.id}`}>
+                            <CardHeader>
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg">
+                                  {report.reportType.charAt(0).toUpperCase() + report.reportType.slice(1)} Report
+                                </CardTitle>
+                                <Badge variant="outline" data-testid={`badge-report-type-${report.id}`}>
+                                  {format(new Date(report.createdAt), "PPpp")}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              {report.plannedTasks && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Planned Tasks:</h4>
+                                  <p className="text-sm whitespace-pre-wrap" data-testid={`text-planned-${report.id}`}>{report.plannedTasks}</p>
+                                </div>
+                              )}
+                              {report.completedTasks && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Completed Tasks:</h4>
+                                  <p className="text-sm whitespace-pre-wrap" data-testid={`text-completed-${report.id}`}>{report.completedTasks}</p>
+                                </div>
+                              )}
+                              {report.pendingTasks && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Pending Tasks:</h4>
+                                  <p className="text-sm whitespace-pre-wrap" data-testid={`text-pending-${report.id}`}>{report.pendingTasks}</p>
+                                </div>
+                              )}
+                              {report.notes && (
+                                <div>
+                                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Notes:</h4>
+                                  <p className="text-sm whitespace-pre-wrap" data-testid={`text-notes-${report.id}`}>{report.notes}</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No reports submitted yet
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
 
             {/* Assigned Tasks */}
             <div>
