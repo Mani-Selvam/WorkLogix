@@ -88,6 +88,17 @@ export const groupMessages = pgTable("group_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const taskTimeLogs = pgTable("task_time_logs", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  totalSeconds: integer("total_seconds").notNull().default(0),
+  timerStartedAt: timestamp("timer_started_at"),
+  timerStatus: varchar("timer_status", { length: 20 }).notNull().default("stopped"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -144,6 +155,11 @@ export const insertGroupMessageSchema = createInsertSchema(groupMessages).omit({
   createdAt: true,
 });
 
+export const insertTaskTimeLogSchema = createInsertSchema(taskTimeLogs).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -164,5 +180,8 @@ export type FileUpload = typeof fileUploads.$inferSelect;
 
 export type InsertGroupMessage = z.infer<typeof insertGroupMessageSchema>;
 export type GroupMessage = typeof groupMessages.$inferSelect;
+
+export type InsertTaskTimeLog = z.infer<typeof insertTaskTimeLogSchema>;
+export type TaskTimeLog = typeof taskTimeLogs.$inferSelect;
 
 export type ArchiveReport = typeof archiveReports.$inferSelect;
