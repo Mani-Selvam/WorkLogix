@@ -11,9 +11,10 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  loggingOut: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, displayName: string, password: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   userRole: "admin" | "user" | null;
   dbUserId: number | null;
 }
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | "user" | null>(null);
   const [dbUserId, setDbUserId] = useState<number | null>(null);
 
@@ -85,15 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    setLoggingOut(true);
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
     setUser(null);
     setUserRole(null);
     setDbUserId(null);
     localStorage.removeItem('user');
+    setLoggingOut(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, signOut, userRole, dbUserId }}>
+    <AuthContext.Provider value={{ user, loading, loggingOut, login, signup, signOut, userRole, dbUserId }}>
       {children}
     </AuthContext.Provider>
   );

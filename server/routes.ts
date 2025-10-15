@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
+import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification } from "./email";
@@ -94,7 +94,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/users", async (req, res, next) => {
     try {
-      const users = await storage.getAllUsers();
+      const { includeDeleted } = req.query;
+      const users = await storage.getAllUsers(includeDeleted === 'true');
       const usersWithoutPasswords = users.map(({ password: _, ...user }) => user);
       res.json(usersWithoutPasswords);
     } catch (error) {
@@ -145,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot delete your own account" });
       }
       
-      await storage.deleteUser(userId);
+      await storage.softDeleteUser(userId);
       
       const { broadcast } = await import("./index");
       if (broadcast) {
@@ -153,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         broadcast({ type: 'USERS_UPDATED' });
       }
       
-      res.json({ message: "User deleted successfully" });
+      res.json({ message: "User removed successfully" });
     } catch (error) {
       next(error);
     }
@@ -183,10 +184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tasks", async (req, res, next) => {
     try {
-      const { userId } = req.query;
+      const { userId, assignedBy } = req.query;
       
       if (userId) {
         const tasks = await storage.getTasksByUserId(parseInt(userId as string));
+        res.json(tasks);
+      } else if (assignedBy) {
+        const tasks = await storage.getTasksByAssignedBy(parseInt(assignedBy as string));
         res.json(tasks);
       } else {
         const tasks = await storage.getAllTasks();
@@ -582,6 +586,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         const messages = await storage.getAllGroupMessages();
         res.json(messages);
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Feedback routes
+  app.post("/api/feedbacks", async (req, res, next) => {
+    try {
+      const validatedFeedback = insertFeedbackSchema.parse(req.body);
+      const feedback = await storage.createFeedback(validatedFeedback);
+      res.json(feedback);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  app.get("/api/feedbacks", async (req, res, next) => {
+    try {
+      const { userId } = req.query;
+      
+      if (userId) {
+        const feedbacks = await storage.getFeedbacksByUserId(parseInt(userId as string));
+        res.json(feedbacks);
+      } else {
+        const feedbacks = await storage.getAllFeedbacks();
+        res.json(feedbacks);
       }
     } catch (error) {
       next(error);

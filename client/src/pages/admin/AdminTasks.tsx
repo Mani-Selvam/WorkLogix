@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, ListTodo, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -35,6 +36,11 @@ export default function AdminTasks() {
     queryKey: ['/api/tasks'],
   });
 
+  const { data: myTasks = [], isLoading: myTasksLoading } = useQuery<Task[]>({
+    queryKey: [`/api/tasks?assignedBy=${dbUserId}`],
+    enabled: !!dbUserId,
+  });
+
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: typeof taskForm) => {
       const payload = {
@@ -56,6 +62,7 @@ export default function AdminTasks() {
       setTaskDialogOpen(false);
       setTaskForm({ title: "", description: "", assignedTo: "", priority: "medium", deadline: "" });
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks?assignedBy=${dbUserId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     },
     onError: (error) => {
@@ -181,66 +188,144 @@ export default function AdminTasks() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">All Tasks ({allTasks.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {tasksLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : allTasks.length > 0 ? (
-            <div className="overflow-x-auto -mx-3 sm:mx-0">
-              <div className="min-w-full inline-block align-middle">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Task</th>
-                      <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Assigned To</th>
-                      <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Priority</th>
-                      <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Status</th>
-                      <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Deadline</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allTasks.map((task: any, index: number) => (
-                      <tr
-                        key={task.id}
-                        className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
-                        data-testid={`row-task-${task.id}`}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-xs sm:text-sm">{task.title}</div>
-                          <div className="text-xs text-muted-foreground line-clamp-1">{task.description || '—'}</div>
-                        </td>
-                        <td className="py-3 px-4 text-xs sm:text-sm">{getUserNameById(task.assignedTo)}</td>
-                        <td className="py-3 px-4">
-                          <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
-                            {task.priority}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant={task.status === 'completed' ? 'default' : 'outline'} className="text-xs">
-                            {task.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-xs font-mono">
-                          {task.deadline ? format(new Date(task.deadline), "MMM dd, yyyy") : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No tasks found
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <ListTodo className="h-4 w-4" />
+            All Tasks ({allTasks.length})
+          </TabsTrigger>
+          <TabsTrigger value="mine" className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            My Created Tasks ({myTasks.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">All Tasks ({allTasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tasksLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : allTasks.length > 0 ? (
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <div className="min-w-full inline-block align-middle">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Task</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Assigned To</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Priority</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Status</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Deadline</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allTasks.map((task: any, index: number) => (
+                          <tr
+                            key={task.id}
+                            className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
+                            data-testid={`row-task-${task.id}`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="font-medium text-xs sm:text-sm">{task.title}</div>
+                              <div className="text-xs text-muted-foreground line-clamp-1">{task.description || '—'}</div>
+                            </td>
+                            <td className="py-3 px-4 text-xs sm:text-sm">{getUserNameById(task.assignedTo)}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                                {task.priority}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.status === 'completed' ? 'default' : 'outline'} className="text-xs">
+                                {task.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-xs font-mono">
+                              {task.deadline ? format(new Date(task.deadline), "MMM dd, yyyy") : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No tasks found
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mine">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Tasks I Created ({myTasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {myTasksLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : myTasks.length > 0 ? (
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <div className="min-w-full inline-block align-middle">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Task</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Assigned To</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Priority</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Status</th>
+                          <th className="text-left py-3 px-4 text-xs sm:text-sm font-semibold">Deadline</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {myTasks.map((task: any, index: number) => (
+                          <tr
+                            key={task.id}
+                            className={`border-b ${index % 2 === 0 ? "bg-card" : "bg-muted/20"} hover-elevate`}
+                            data-testid={`row-task-${task.id}`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="font-medium text-xs sm:text-sm">{task.title}</div>
+                              <div className="text-xs text-muted-foreground line-clamp-1">{task.description || '—'}</div>
+                            </td>
+                            <td className="py-3 px-4 text-xs sm:text-sm">{getUserNameById(task.assignedTo)}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                                {task.priority}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge variant={task.status === 'completed' ? 'default' : 'outline'} className="text-xs">
+                                {task.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-xs font-mono">
+                              {task.deadline ? format(new Date(task.deadline), "MMM dd, yyyy") : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  You haven't created any tasks yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   CheckSquare, 
   MessageSquare, 
   Star,
+  MessageCircle,
   LogOut,
   Menu
 } from "lucide-react";
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { path: "/admin/tasks", label: "Tasks", icon: CheckSquare },
   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
   { path: "/admin/ratings", label: "Ratings", icon: Star },
+  { path: "/admin/feedback", label: "Feedback", icon: MessageCircle },
 ];
 
 const bottomNavItems: BottomNavItem[] = [
@@ -42,11 +44,11 @@ const bottomNavItems: BottomNavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loggingOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    signOut();
+  const handleLogout = async () => {
+    await signOut();
     window.location.href = "/";
   };
 
@@ -104,10 +106,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           variant="outline"
           className="w-full justify-start"
           onClick={handleLogout}
+          disabled={loggingOut}
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Logout
+          {loggingOut ? "Logging out..." : "Logout"}
         </Button>
       </div>
     </div>

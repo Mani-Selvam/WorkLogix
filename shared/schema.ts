@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   photoURL: text("photo_url"),
   role: varchar("role", { length: 20 }).notNull().default("user"),
   firebaseUid: text("firebase_uid").unique(),
+  isActive: boolean("is_active").notNull().default(true),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -99,6 +101,13 @@ export const taskTimeLogs = pgTable("task_time_logs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const feedbacks = pgTable("feedbacks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -160,6 +169,11 @@ export const insertTaskTimeLogSchema = createInsertSchema(taskTimeLogs).omit({
   updatedAt: true,
 });
 
+export const insertFeedbackSchema = createInsertSchema(feedbacks).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -183,5 +197,8 @@ export type GroupMessage = typeof groupMessages.$inferSelect;
 
 export type InsertTaskTimeLog = z.infer<typeof insertTaskTimeLogSchema>;
 export type TaskTimeLog = typeof taskTimeLogs.$inferSelect;
+
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+export type Feedback = typeof feedbacks.$inferSelect;
 
 export type ArchiveReport = typeof archiveReports.$inferSelect;

@@ -46,11 +46,11 @@ const bottomNavItems: BottomNavItem[] = [
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loggingOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    signOut();
+  const handleLogout = async () => {
+    await signOut();
     window.location.href = "/";
   };
 
@@ -105,10 +105,11 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           variant="outline"
           className="w-full justify-start"
           onClick={handleLogout}
+          disabled={loggingOut}
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Logout
+          {loggingOut ? "Logging out..." : "Logout"}
         </Button>
       </div>
     </div>

@@ -22,9 +22,12 @@ export default function Users() {
     period: "weekly",
   });
 
-  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ['/api/users'],
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ['/api/users?includeDeleted=true'],
   });
+
+  const activeUsers = allUsers.filter(u => u.isActive !== false);
+  const deletedUsers = allUsers.filter(u => u.isActive === false);
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -82,16 +85,16 @@ export default function Users() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Active Users ({activeUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {usersLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : users.length > 0 ? (
+          ) : activeUsers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {users.map((user) => (
+              {activeUsers.map((user) => (
                 <Card key={user.id} data-testid={`card-user-${user.id}`}>
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-3 mb-3">
@@ -143,11 +146,46 @@ export default function Users() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No users found
+              No active users found
             </div>
           )}
         </CardContent>
       </Card>
+
+      {deletedUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Removed Users ({deletedUsers.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {deletedUsers.map((user) => (
+                <Card key={user.id} className="opacity-60">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                        <AvatarImage src={user.photoURL || ''} />
+                        <AvatarFallback className="bg-muted text-muted-foreground text-xs sm:text-sm">
+                          {user.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm sm:text-base truncate">{user.displayName}</h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        Removed
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
         <DialogContent>

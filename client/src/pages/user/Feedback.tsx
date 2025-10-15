@@ -3,11 +3,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Feedback() {
   const [feedback, setFeedback] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { dbUserId } = useAuth();
+
+  const submitFeedbackMutation = useMutation({
+    mutationFn: async (message: string) => {
+      return await apiRequest('POST', '/api/feedbacks', {
+        userId: dbUserId,
+        message,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Your feedback has been submitted",
+      });
+      setFeedback("");
+      queryClient.invalidateQueries({ queryKey: ['/api/feedbacks'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit feedback",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = async () => {
     if (!feedback.trim()) {
@@ -19,16 +46,7 @@ export default function Feedback() {
       return;
     }
 
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      toast({
-        title: "Success",
-        description: "Your feedback has been submitted",
-      });
-      setFeedback("");
-      setIsSubmitting(false);
-    }, 1000);
+    submitFeedbackMutation.mutate(feedback);
   };
 
   return (
@@ -52,10 +70,10 @@ export default function Feedback() {
           />
           <Button 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={submitFeedbackMutation.isPending}
             data-testid="button-submit-feedback"
           >
-            {isSubmitting ? "Submitting..." : "Submit Feedback"}
+            {submitFeedbackMutation.isPending ? "Submitting..." : "Submit Feedback"}
           </Button>
         </CardContent>
       </Card>

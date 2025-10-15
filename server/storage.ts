@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs,
+  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks,
   type User, type InsertUser,
   type Task, type InsertTask,
   type Report, type InsertReport,
@@ -9,7 +9,8 @@ import {
   type FileUpload, type InsertFileUpload,
   type ArchiveReport,
   type GroupMessage, type InsertGroupMessage,
-  type TaskTimeLog, type InsertTaskTimeLog
+  type TaskTimeLog, type InsertTaskTimeLog,
+  type Feedback, type InsertFeedback
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -20,13 +21,15 @@ export interface IStorage {
   getUserByFirebaseUid(uid: string): Promise<User | null>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(includeDeleted?: boolean): Promise<User[]>;
   deleteUser(id: number): Promise<void>;
+  softDeleteUser(id: number): Promise<void>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
   getTaskById(id: number): Promise<Task | null>;
   getTasksByUserId(userId: number): Promise<Task[]>;
+  getTasksByAssignedBy(assignedBy: number): Promise<Task[]>;
   getAllTasks(): Promise<Task[]>;
   updateTaskStatus(id: number, status: string): Promise<void>;
   updateTask(id: number, updates: Partial<InsertTask>): Promise<void>;
@@ -75,6 +78,11 @@ export interface IStorage {
   completeTaskTimer(taskId: number, userId: number, date: string): Promise<TaskTimeLog>;
   getTaskTimeLogs(taskId: number, userId: number): Promise<TaskTimeLog[]>;
   
+  // Feedback operations
+  createFeedback(feedback: InsertFeedback): Promise<Feedback>;
+  getAllFeedbacks(): Promise<Feedback[]>;
+  getFeedbacksByUserId(userId: number): Promise<Feedback[]>;
+  
   // Dashboard stats
   getDashboardStats(): Promise<{
     totalUsers: number;
@@ -110,12 +118,24 @@ export class DbStorage implements IStorage {
     await db.update(users).set({ role }).where(eq(users.id, id));
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+  async getAllUsers(includeDeleted: boolean = false): Promise<User[]> {
+    if (includeDeleted) {
+      return await db.select().from(users);
+    }
+    return await db.select().from(users).where(eq(users.isActive, true));
   }
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  async softDeleteUser(id: number): Promise<void> {
+    await db.update(users)
+      .set({ 
+        isActive: false, 
+        deletedAt: new Date() 
+      })
+      .where(eq(users.id, id));
   }
 
   async createTask(task: InsertTask): Promise<Task> {
@@ -131,6 +151,12 @@ export class DbStorage implements IStorage {
   async getTasksByUserId(userId: number): Promise<Task[]> {
     return await db.select().from(tasks)
       .where(eq(tasks.assignedTo, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByAssignedBy(assignedBy: number): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(eq(tasks.assignedBy, assignedBy))
       .orderBy(desc(tasks.createdAt));
   }
 
@@ -424,6 +450,21 @@ export class DbStorage implements IStorage {
         eq(taskTimeLogs.userId, userId)
       ))
       .orderBy(desc(taskTimeLogs.date));
+  }
+
+  async createFeedback(feedback: InsertFeedback): Promise<Feedback> {
+    const result = await db.insert(feedbacks).values(feedback).returning();
+    return result[0];
+  }
+
+  async getAllFeedbacks(): Promise<Feedback[]> {
+    return await db.select().from(feedbacks).orderBy(desc(feedbacks.createdAt));
+  }
+
+  async getFeedbacksByUserId(userId: number): Promise<Feedback[]> {
+    return await db.select().from(feedbacks)
+      .where(eq(feedbacks.userId, userId))
+      .orderBy(desc(feedbacks.createdAt));
   }
 
   async getDashboardStats(): Promise<{

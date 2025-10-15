@@ -21,6 +21,7 @@ import AdminReports from "@/pages/admin/AdminReports";
 import AdminTasks from "@/pages/admin/AdminTasks";
 import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
+import AdminFeedback from "@/pages/admin/AdminFeedback";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: "admin" | "user" }) {
   const { user, loading, userRole } = useAuth();
@@ -95,6 +96,9 @@ function Router() {
       </Route>
       <Route path="/admin/ratings">
         {() => <ProtectedRoute component={() => <AdminLayout><AdminRatings /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/feedback">
+        {() => <ProtectedRoute component={() => <AdminLayout><AdminFeedback /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
