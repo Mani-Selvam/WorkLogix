@@ -109,15 +109,25 @@ export default function TaskCard({
 
   const completeTimerMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/tasks/${id}/timer/complete`, {
+      const timerRes = await fetch(`/api/tasks/${id}/timer/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, date: today }),
       });
-      if (!res.ok) throw new Error('Failed to complete timer');
-      return res.json();
+      if (!timerRes.ok) throw new Error('Failed to complete timer');
+      
+      const statusRes = await fetch(`/api/tasks/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      if (!statusRes.ok) throw new Error('Failed to update task status');
+      
+      return timerRes.json();
     },
     onSuccess: () => {
+      setCurrentStatus('Completed');
+      onStatusChange?.('Completed');
       refetchTimeLog();
     },
   });
