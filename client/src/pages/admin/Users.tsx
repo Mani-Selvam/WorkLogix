@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,24 +11,56 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@shared/schema";
+import { Plus, Users as UsersIcon } from "lucide-react";
+
+interface CompanyData {
+  id: number;
+  name: string;
+  maxAdmins: number;
+  maxMembers: number;
+  currentAdmins: number;
+  currentMembers: number;
+  isActive: boolean;
+}
 
 export default function Users() {
   const { toast } = useToast();
+  const { dbUserId, companyId, userRole } = useAuth();
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [ratingForm, setRatingForm] = useState({
     userId: "",
     rating: "",
     feedback: "",
     period: "weekly",
   });
+  const [userForm, setUserForm] = useState({
+    email: "",
+    displayName: "",
+    password: "",
+    role: "company_member",
+  });
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['/api/users?includeDeleted=true'],
   });
 
+  const { data: company } = useQuery<CompanyData>({
+    queryKey: ['/api/my-company'],
+    enabled: !!companyId && !!dbUserId && userRole === 'company_admin',
+  });
+
   const activeUsers = allUsers.filter(u => u.isActive !== false);
   const deletedUsers = allUsers.filter(u => u.isActive === false);
+
+  const adminSlots = company 
+    ? { current: company.currentAdmins, max: company.maxAdmins, available: company.maxAdmins - company.currentAdmins }
+    : null;
+  const memberSlots = company 
+    ? { current: company.currentMembers, max: company.maxMembers, available: company.maxMembers - company.currentMembers }
+    : null;
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -74,14 +107,75 @@ export default function Users() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: typeof userForm) => {
+      return await apiRequest('POST', '/api/users', userData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "User added successfully",
+      });
+      setUserForm({ email: "", displayName: "", password: "", role: "company_member" });
+      setAddUserDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/users?includeDeleted=true'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to add user",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canAddAdmin = !adminSlots || adminSlots.available > 0;
+  const canAddMember = !memberSlots || memberSlots.available > 0;
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h2 className="text-2xl sm:text-3xl font-bold">User Management</h2>
-        <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Manage users and their roles
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold">User Management</h2>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Manage users and their roles
+          </p>
+        </div>
+        {userRole === 'company_admin' && (
+          <Button
+            onClick={() => setAddUserDialogOpen(true)}
+            data-testid="button-add-user"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
+        )}
       </div>
+
+      {/* Slot Availability (for company admins) */}
+      {company && userRole === 'company_admin' && (
+        <Card data-testid="card-slot-availability">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <UsersIcon className="h-8 w-8 text-muted-foreground" />
+              <div className="flex-1 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Admin Slots</p>
+                  <p className="text-lg font-semibold" data-testid="text-admin-slots-available">
+                    {adminSlots?.available} / {adminSlots?.max} available
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Member Slots</p>
+                  <p className="text-lg font-semibold" data-testid="text-member-slots-available">
+                    {memberSlots?.available} / {memberSlots?.max} available
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -248,6 +342,92 @@ export default function Users() {
               className="w-full"
             >
               {createRatingMutation.isPending ? "Submitting..." : "Submit Rating"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>
+              Create a new user account for your company
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="user-email">Email</Label>
+              <Input
+                id="user-email"
+                type="email"
+                placeholder="user@example.com"
+                value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                data-testid="input-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-displayname">Display Name</Label>
+              <Input
+                id="user-displayname"
+                placeholder="John Doe"
+                value={userForm.displayName}
+                onChange={(e) => setUserForm({ ...userForm, displayName: e.target.value })}
+                data-testid="input-user-displayname"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-password">Password</Label>
+              <Input
+                id="user-password"
+                type="password"
+                placeholder="********"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                data-testid="input-user-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-role">Role</Label>
+              <Select 
+                value={userForm.role} 
+                onValueChange={(value) => setUserForm({ ...userForm, role: value })}
+              >
+                <SelectTrigger id="user-role" data-testid="select-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company_admin" disabled={!canAddAdmin}>
+                    Admin {!canAddAdmin && `(${adminSlots?.available}/${adminSlots?.max} slots)`}
+                  </SelectItem>
+                  <SelectItem value="company_member" disabled={!canAddMember}>
+                    Member {!canAddMember && `(${memberSlots?.available}/${memberSlots?.max} slots)`}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(!canAddAdmin || !canAddMember) && (
+              <p className="text-sm text-amber-600" data-testid="text-slot-warning">
+                {!canAddAdmin && "Admin slots are full. "}
+                {!canAddMember && "Member slots are full. "}
+                Upgrade your plan to add more users.
+              </p>
+            )}
+            <Button 
+              onClick={() => createUserMutation.mutate(userForm)}
+              disabled={
+                !userForm.email || 
+                !userForm.displayName || 
+                !userForm.password || 
+                createUserMutation.isPending ||
+                (userForm.role === 'company_admin' && !canAddAdmin) ||
+                (userForm.role === 'company_member' && !canAddMember)
+              }
+              data-testid="button-submit-add-user"
+              className="w-full"
+            >
+              {createUserMutation.isPending ? "Adding..." : "Add User"}
             </Button>
           </div>
         </DialogContent>

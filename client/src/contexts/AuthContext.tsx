@@ -5,7 +5,8 @@ interface User {
   email: string;
   displayName: string;
   photoURL?: string | null;
-  role: "admin" | "user";
+  role: "super_admin" | "company_admin" | "company_member";
+  companyId?: number | null;
 }
 
 interface AuthContextType {
@@ -15,8 +16,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, displayName: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  userRole: "admin" | "user" | null;
+  userRole: "super_admin" | "company_admin" | "company_member" | null;
   dbUserId: number | null;
+  companyId: number | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,8 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [userRole, setUserRole] = useState<"admin" | "user" | null>(null);
+  const [userRole, setUserRole] = useState<"super_admin" | "company_admin" | "company_member" | null>(null);
   const [dbUserId, setDbUserId] = useState<number | null>(null);
+  const [companyId, setCompanyId] = useState<number | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       setUserRole(userData.role);
       setDbUserId(userData.id);
+      setCompanyId(userData.companyId || null);
     }
     setLoading(false);
   }, []);
@@ -56,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       setUserRole(userData.role);
       setDbUserId(userData.id);
+      setCompanyId(userData.companyId || null);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error("Error logging in:", error);
@@ -80,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       setUserRole(userData.role);
       setDbUserId(userData.id);
+      setCompanyId(userData.companyId || null);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error("Error signing up:", error);
@@ -95,12 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setUserRole(null);
     setDbUserId(null);
+    setCompanyId(null);
     localStorage.removeItem('user');
     setLoggingOut(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loggingOut, login, signup, signOut, userRole, dbUserId }}>
+    <AuthContext.Provider value={{ user, loading, loggingOut, login, signup, signOut, userRole, dbUserId, companyId }}>
       {children}
     </AuthContext.Provider>
   );

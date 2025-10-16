@@ -18,9 +18,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-      const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" 
-        : validatedData.email.toLowerCase().includes("admin") ? "company_admin" 
-        : "company_member";
+      
+      // Public signup only creates super admins
+      // Company users must be created by admins via POST /api/users
+      const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" : null;
+      
+      if (!role) {
+        return res.status(400).json({ 
+          message: "Public signup is restricted. Please contact your company administrator to create an account." 
+        });
+      }
       
       const user = await storage.createUser({
         email: validatedData.email,
@@ -73,9 +80,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user = await storage.getUserByEmail(validatedData.email);
         
         if (!user) {
-          const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" 
-            : validatedData.email.toLowerCase().includes("admin") ? "company_admin" 
-            : "company_member";
+          // Firebase signin only creates super admins
+          // Company users must be created by admins
+          const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" : null;
+          
+          if (!role) {
+            return res.status(400).json({ 
+              message: "Account not found. Please contact your company administrator to create an account." 
+            });
+          }
+          
           user = await storage.createUser({
             email: validatedData.email,
             displayName: validatedData.displayName,
@@ -98,8 +112,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/users", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { includeDeleted } = req.query;
-      const users = await storage.getAllUsers(includeDeleted === 'true');
+      let users = await storage.getAllUsers(includeDeleted === 'true');
+
+      // Filter by company unless super_admin
+      if (requestingUser.role === 'super_admin') {
+        // Super admins can see all users
+      } else if (requestingUser.companyId) {
+        // Company admins and members can only see users in their company
+        users = users.filter(u => u.companyId === requestingUser.companyId);
+      } else {
+        // Users without a company can't see any users
+        users = [];
+      }
+      
       const usersWithoutPasswords = users.map(({ password: _, ...user }) => user);
       res.json(usersWithoutPasswords);
     } catch (error) {
@@ -109,10 +145,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/users/:id", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "Requesting user not found" });
+      }
+
       const user = await storage.getUserById(parseInt(req.params.id));
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Company scoping: users can only view users in their company (or all if super_admin)
+      if (requestingUser.role !== 'super_admin' && user.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
@@ -122,10 +174,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/users/:id/role", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can update roles" });
+      }
+
+      const targetUser = await storage.getUserById(parseInt(req.params.id));
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Company scoping: admins can only update users in their company (or all if super_admin)
+      if (requestingUser.role !== 'super_admin' && targetUser.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { role } = req.body;
       await storage.updateUserRole(parseInt(req.params.id), role);
       res.json({ message: "Role updated successfully" });
     } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/users", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can create users" });
+      }
+
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Check slot availability for company admins
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId) {
+        const company = await storage.getCompanyById(requestingUser.companyId);
+        const users = await storage.getUsersByCompanyId(requestingUser.companyId);
+        
+        if (!company) {
+          return res.status(404).json({ message: "Company not found" });
+        }
+
+        const adminCount = users.filter(u => u.role === 'company_admin').length;
+        const memberCount = users.filter(u => u.role === 'company_member').length;
+
+        if (validatedData.role === 'company_admin' && adminCount >= company.maxAdmins) {
+          return res.status(400).json({ 
+            message: `Admin slots full. Current: ${adminCount}/${company.maxAdmins}. Please upgrade your plan.` 
+          });
+        }
+
+        if (validatedData.role === 'company_member' && memberCount >= company.maxMembers) {
+          return res.status(400).json({ 
+            message: `Member slots full. Current: ${memberCount}/${company.maxMembers}. Please upgrade your plan.` 
+          });
+        }
+
+        validatedData.companyId = requestingUser.companyId;
+      }
+      
+      const hashedPassword = validatedData.password ? await bcrypt.hash(validatedData.password, 10) : undefined;
+      const user = await storage.createUser({
+        ...validatedData,
+        password: hashedPassword,
+      });
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       next(error);
     }
   });
@@ -148,6 +284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (userId === requestingUser.id) {
         return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Company scoping: admins can only delete users in their company (or all if super_admin)
+      if (requestingUser.role !== 'super_admin' && targetUser.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
       }
       
       await storage.softDeleteUser(userId);
@@ -283,6 +429,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteCompany(parseInt(req.params.id));
       res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Company Admin routes (for managing their own company)
+  app.get("/api/my-company", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(404).json({ message: "User not associated with a company" });
+      }
+
+      const company = await storage.getCompanyById(requestingUser.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      const users = await storage.getUsersByCompanyId(requestingUser.companyId);
+      const adminCount = users.filter(u => u.role === 'company_admin').length;
+      const memberCount = users.filter(u => u.role === 'company_member').length;
+
+      res.json({
+        ...company,
+        currentAdmins: adminCount,
+        currentMembers: memberCount,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/my-company", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Only company admins can update company settings" });
+      }
+
+      if (!requestingUser.companyId) {
+        return res.status(404).json({ message: "User not associated with a company" });
+      }
+
+      const updates = req.body;
+      await storage.updateCompany(requestingUser.companyId, updates);
+      res.json({ message: "Company updated successfully" });
     } catch (error) {
       next(error);
     }

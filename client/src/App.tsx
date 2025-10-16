@@ -22,6 +22,7 @@ import AdminTasks from "@/pages/admin/AdminTasks";
 import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
 import AdminFeedback from "@/pages/admin/AdminFeedback";
+import CompanyManagement from "@/pages/admin/CompanyManagement";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: "admin" | "user" }) {
   const { user, loading, userRole } = useAuth();
@@ -41,8 +42,15 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any;
     return <Redirect to="/" />;
   }
 
-  if (allowedRole && userRole !== allowedRole) {
-    return <Redirect to={userRole === "admin" ? "/admin" : "/user"} />;
+  const isAdmin = userRole === "super_admin" || userRole === "company_admin";
+  const isUser = userRole === "company_member";
+
+  if (allowedRole === "admin" && !isAdmin) {
+    return <Redirect to="/user" />;
+  }
+
+  if (allowedRole === "user" && !isUser) {
+    return <Redirect to="/admin" />;
   }
 
   return <Component />;
@@ -99,6 +107,9 @@ function Router() {
       </Route>
       <Route path="/admin/feedback">
         {() => <ProtectedRoute component={() => <AdminLayout><AdminFeedback /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/company">
+        {() => <ProtectedRoute component={() => <AdminLayout><CompanyManagement /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />

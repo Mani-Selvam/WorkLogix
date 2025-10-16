@@ -1,12 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MetricCard from "@/components/MetricCard";
-import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare } from "lucide-react";
+import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare, Building2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface CompanyData {
+  id: number;
+  name: string;
+  maxAdmins: number;
+  maxMembers: number;
+  currentAdmins: number;
+  currentMembers: number;
+  isActive: boolean;
+}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const { dbUserId, companyId } = useAuth();
 
   const { data: stats } = useQuery<{
     totalUsers: number;
@@ -16,6 +28,11 @@ export default function Dashboard() {
     totalFiles: number;
   }>({
     queryKey: ['/api/dashboard/stats'],
+  });
+
+  const { data: company } = useQuery<CompanyData>({
+    queryKey: ['/api/my-company'],
+    enabled: !!companyId && !!dbUserId,
   });
 
   const quickActions = [
@@ -32,6 +49,44 @@ export default function Dashboard() {
           Monitor your team's performance and activity
         </p>
       </div>
+
+      {/* Company Info Banner */}
+      {company && (
+        <Card data-testid="card-company-banner">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg" data-testid="text-dashboard-company-name">
+                  {company.name}
+                </h3>
+                <div className="mt-2 flex flex-wrap gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Admins: </span>
+                    <span className="font-medium" data-testid="text-dashboard-admin-count">
+                      {company.currentAdmins}/{company.maxAdmins}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Members: </span>
+                    <span className="font-medium" data-testid="text-dashboard-member-count">
+                      {company.currentMembers}/{company.maxMembers}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total Capacity: </span>
+                    <span className="font-medium" data-testid="text-dashboard-total-capacity">
+                      {company.currentAdmins + company.currentMembers}/{company.maxAdmins + company.maxMembers}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metrics */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">

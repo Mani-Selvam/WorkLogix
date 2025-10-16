@@ -12,7 +12,8 @@ import {
   Star,
   MessageCircle,
   LogOut,
-  Menu
+  Menu,
+  Building2
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import BottomNav, { BottomNavItem } from "./BottomNav";
@@ -26,6 +27,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/company", label: "Company", icon: Building2 },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/reports", label: "Reports", icon: FileText },
   { path: "/admin/tasks", label: "Tasks", icon: CheckSquare },

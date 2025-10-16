@@ -1,10 +1,20 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, CheckCircle2, ListTodo, Star } from "lucide-react";
+import { FileText, CheckCircle2, ListTodo, Star, Building2 } from "lucide-react";
+
+interface CompanyData {
+  id: number;
+  name: string;
+  maxAdmins: number;
+  maxMembers: number;
+  currentAdmins: number;
+  currentMembers: number;
+  isActive: boolean;
+}
 
 export default function Overview() {
-  const { dbUserId } = useAuth();
+  const { dbUserId, companyId } = useAuth();
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['/api/user/stats', dbUserId],
@@ -21,6 +31,11 @@ export default function Overview() {
       };
     },
     enabled: !!dbUserId,
+  });
+
+  const { data: company } = useQuery<CompanyData>({
+    queryKey: ['/api/my-company'],
+    enabled: !!companyId && !!dbUserId,
   });
 
   const statCards = [
@@ -64,6 +79,23 @@ export default function Overview() {
         <h2 className="text-2xl sm:text-3xl font-bold">Overview</h2>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">Your work summary and statistics</p>
       </div>
+
+      {/* Company Info */}
+      {company && (
+        <Card data-testid="card-company-info">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Company</p>
+                <p className="font-semibold" data-testid="text-user-company-name">{company.name}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
