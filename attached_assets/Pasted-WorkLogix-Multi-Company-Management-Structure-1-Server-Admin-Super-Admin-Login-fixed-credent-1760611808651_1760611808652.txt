@@ -1,0 +1,151 @@
+WorkLogix Multi-Company Management Structure
+1️⃣ Server Admin (Super Admin)
+
+Login (fixed credentials):
+
+Username: superadmin
+
+Password: worklogix@26
+
+Email: superadmin@worklogix.com
+
+Dashboard Access:
+Once logged in → Access Super Admin Dashboard
+Controls all companies and their internal users.
+
+Super Admin Powers
+
+✅ View all registered companies
+
+✅ View company admins and their users
+
+✅ Suspend / Reactivate any company
+
+✅ Change or update slot pricing (for extra user slots)
+
+✅ Delete company if needed
+
+✅ Monitor total users per company
+
+✅ View company activities (e.g., number of logins, payments)
+
+✅ Optional: Dashboard stats (Total Companies, Total Users, Active Slots, Payment Reports)
+
+2️⃣ Automatic Company Registration System
+
+⚙️ Super Admin does not manually create companies.
+Any company can register directly, and the system generates a unique server ID for them automatically.
+
+Company Registration Form
+
+Fields:
+
+Company Name
+
+Password
+
+Company Email
+
+After Submit:
+
+A unique Company Server ID is generated (e.g. CMP-XYZ123)
+
+This ID is sent via email to the company admin
+
+Each company ID is unique and secret (not shared between companies)
+
+Note:
+
+Only password can be reset — company ID cannot be changed.
+
+Once registered, the Company Admin login becomes active.
+
+3️⃣ Company Admin Portal (per company)
+
+Login Form:
+
+Company Name
+
+Company Email
+
+Company Server Unique ID
+
+Password
+
+✅ After Login:
+A unique user ID is generated (e.g. user-XYZ123)
+
+This ID is sent via email to the company admin
+
+Each user ID is unique and secret (not shared between other companies users)
+
+Admin is redirected to their Company Dashboard (you already designed this).
+
+Admin Dashboard Controls:
+
+Manage up to 10 users (default)
+
+Add / remove / update users
+
+Monitor user activity
+
+View company slot usage
+
+🧩 Slot Management:
+
+Default 10 users are free
+
+When limit reached → system shows a “Buy Extra Slots” option
+
+After payment, system automatically increases slots (e.g., +5 or +10)
+
+Payment updates visible to Super Admin
+
+4️⃣ Company User Portal
+
+Login Form:
+
+Username
+
+Company Unique ID (shared for all users under one company)
+
+Password
+
+✅ After Login:
+Redirected to User Dashboard (you already designed).
+Users can:
+
+View their own profile / tasks
+
+Access assigned resources
+
+Submit reports or requests (based on your existing design)
+
+Note:
+
+Forget password only (cannot modify company ID).
+
+5️⃣ Access Hierarchy Overview
+
+    Level	Role	Access Scope	Key Features
+🧠 Super Admin	Server-level	All Companies	Suspend, Pay Control, Stats
+🏢 Company Admin	Company-level	Own Company + Users	User Mgmt, Slot Control
+👤 Company User	User-level	Self	Dashboard View, Reports
+
+6️⃣ Extra Suggestions (you can include ):
+
+💳 Stripe / Razorpay integration for slot payments
+
+🔔 Notification system (email + WhatsApp) for company registration and slot updates
+
+📊 Analytics dashboard (super admin view) — show number of active users, total slots sold, etc.
+
+🧾 Company verification step (email verification before dashboard access)
+
+🧱 API routes separation:
+
+/api/super-admin/*
+
+/api/company-admin/*
+
+/api/company-user/*
