@@ -2,8 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import MetricCard from "@/components/MetricCard";
-import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare, Building2, DollarSign, CreditCard, Edit } from "lucide-react";
+import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare, Building2, DollarSign, CreditCard, Edit, Trash2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +37,8 @@ export default function Dashboard() {
   const { dbUserId, companyId, userRole } = useAuth();
   const { toast } = useToast();
   const [editingPricing, setEditingPricing] = useState<{ slotType: string; price: string } | null>(null);
+  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const isSuperAdmin = userRole === "super_admin";
 
@@ -74,6 +86,42 @@ export default function Dashboard() {
     },
   });
 
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async (companyId: number) => {
+      return await apiRequest('DELETE', `/api/companies/${companyId}`);
+    },
+    onMutate: async (companyId: number) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/companies'] });
+      
+      const previousCompanies = queryClient.getQueryData<Company[]>(['/api/companies']);
+      
+      queryClient.setQueryData<Company[]>(['/api/companies'], (old) => 
+        old ? old.filter(c => c.id !== companyId) : []
+      );
+      
+      return { previousCompanies };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      toast({ 
+        title: "Success", 
+        description: "Company removed successfully" 
+      });
+      setDeleteDialogOpen(false);
+      setCompanyToDelete(null);
+    },
+    onError: (error: any, companyId, context) => {
+      if (context?.previousCompanies) {
+        queryClient.setQueryData(['/api/companies'], context.previousCompanies);
+      }
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to remove company", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const handleSavePricing = () => {
     if (editingPricing) {
       updatePricingMutation.mutate({
@@ -81,6 +129,17 @@ export default function Dashboard() {
         pricePerSlot: parseInt(editingPricing.price),
         currency: "USD",
       });
+    }
+  };
+
+  const handleDeleteCompany = (company: Company) => {
+    setCompanyToDelete(company);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCompany = () => {
+    if (companyToDelete) {
+      deleteCompanyMutation.mutate(companyToDelete.id);
     }
   };
 
@@ -223,8 +282,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-2">
               {allCompanies.slice(0, 5).map((comp) => (
-                <div key={comp.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`company-${comp.id}`}>
-                  <div>
+                <div key={comp.id} className="flex items-center justify-between p-3 border rounded-lg gap-3" data-testid={`company-${comp.id}`}>
+                  <div className="flex-1">
                     <p className="font-medium">{comp.name}</p>
                     <p className="text-sm text-muted-foreground">{comp.serverId}</p>
                   </div>
@@ -236,6 +295,16 @@ export default function Dashboard() {
                       {comp.isActive ? 'Active' : 'Inactive'}
                     </p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteCompany(comp)}
+                    disabled={deleteCompanyMutation.isPending}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    data-testid={`button-delete-company-${comp.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
               {allCompanies.length > 5 && (
@@ -348,6 +417,30 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Company Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-company">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Company</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <span className="font-semibold">{companyToDelete?.name}</span>? 
+              This will deactivate the company and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteCompany}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteCompanyMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteCompanyMutation.isPending ? "Removing..." : "Remove Company"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

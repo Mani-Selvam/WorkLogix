@@ -58,6 +58,10 @@ externalPort = 6000
 localPort = 41247
 externalPort = 3003
 
+[[ports]]
+localPort = 41755
+externalPort = 8080
+
 [env]
 PORT = "5000"
 
@@ -84,3 +88,4 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_database:1.0.0", "firebase_barebones_javascript:1.0.0", "resend:1.0.0"]
+expertMode = true
