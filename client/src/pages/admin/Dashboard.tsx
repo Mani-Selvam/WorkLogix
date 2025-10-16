@@ -1,10 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import MetricCard from "@/components/MetricCard";
-import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare, Building2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Users, FileText, CheckCircle, FolderOpen, Plus, MessageSquare, Building2, DollarSign, CreditCard, Edit } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import type { SlotPricing, CompanyPayment, Company } from "@shared/schema";
 
 interface CompanyData {
   id: number;
@@ -18,7 +24,11 @@ interface CompanyData {
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { dbUserId, companyId } = useAuth();
+  const { dbUserId, companyId, userRole } = useAuth();
+  const { toast } = useToast();
+  const [editingPricing, setEditingPricing] = useState<{ slotType: string; price: string } | null>(null);
+
+  const isSuperAdmin = userRole === "super_admin";
 
   const { data: stats } = useQuery<{
     totalUsers: number;
@@ -32,8 +42,47 @@ export default function Dashboard() {
 
   const { data: company } = useQuery<CompanyData>({
     queryKey: ['/api/my-company'],
-    enabled: !!companyId && !!dbUserId,
+    enabled: !!companyId && !!dbUserId && !isSuperAdmin,
   });
+
+  const { data: slotPricing } = useQuery<SlotPricing[]>({
+    queryKey: ['/api/slot-pricing'],
+    enabled: isSuperAdmin,
+  });
+
+  const { data: allCompanies } = useQuery<Company[]>({
+    queryKey: ['/api/companies'],
+    enabled: isSuperAdmin,
+  });
+
+  const { data: allPayments } = useQuery<CompanyPayment[]>({
+    queryKey: ['/api/company-payments'],
+    enabled: isSuperAdmin,
+  });
+
+  const updatePricingMutation = useMutation({
+    mutationFn: async (data: { slotType: string; pricePerSlot: number; currency: string }) => {
+      return await apiRequest('POST', '/api/slot-pricing', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/slot-pricing'] });
+      toast({ title: "Success", description: "Pricing updated successfully" });
+      setEditingPricing(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update pricing", variant: "destructive" });
+    },
+  });
+
+  const handleSavePricing = () => {
+    if (editingPricing) {
+      updatePricingMutation.mutate({
+        slotType: editingPricing.slotType,
+        pricePerSlot: parseInt(editingPricing.price),
+        currency: "USD",
+      });
+    }
+  };
 
   const quickActions = [
     { icon: Plus, label: "Create Task", onClick: () => setLocation("/admin/tasks") },
@@ -50,8 +99,8 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Company Info Banner */}
-      {company && (
+      {/* Company Info Banner - Company Admin Only */}
+      {company && !isSuperAdmin && (
         <Card data-testid="card-company-banner">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-start gap-4">
@@ -83,6 +132,164 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Super Admin: Slot Pricing Management */}
+      {isSuperAdmin && (
+        <Card data-testid="card-slot-pricing">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Slot Pricing Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {['admin', 'member'].map((slotType) => {
+                const pricing = slotPricing?.find(p => p.slotType === slotType);
+                const isEditing = editingPricing?.slotType === slotType;
+                
+                return (
+                  <div key={slotType} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold capitalize">{slotType} Slot</h4>
+                      {!isEditing && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingPricing({ slotType, price: pricing?.pricePerSlot?.toString() || '0' })}
+                          data-testid={`button-edit-${slotType}-pricing`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div>
+                          <Label>Price per Slot (USD)</Label>
+                          <Input
+                            type="number"
+                            value={editingPricing.price}
+                            onChange={(e) => setEditingPricing({ ...editingPricing, price: e.target.value })}
+                            data-testid={`input-${slotType}-price`}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={handleSavePricing}
+                            disabled={updatePricingMutation.isPending}
+                            data-testid={`button-save-${slotType}-pricing`}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingPricing(null)}
+                            data-testid={`button-cancel-${slotType}-pricing`}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold text-primary" data-testid={`text-${slotType}-price`}>
+                        ${pricing?.pricePerSlot || 0}
+                        <span className="text-sm text-muted-foreground font-normal">/slot</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Super Admin: Company Overview */}
+      {isSuperAdmin && allCompanies && (
+        <Card data-testid="card-companies-overview">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Companies Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {allCompanies.slice(0, 5).map((comp) => (
+                <div key={comp.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`company-${comp.id}`}>
+                  <div>
+                    <p className="font-medium">{comp.name}</p>
+                    <p className="text-sm text-muted-foreground">{comp.serverId}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">
+                      <span className="font-medium">{comp.maxAdmins + comp.maxMembers}</span> slots
+                    </p>
+                    <p className={`text-xs ${comp.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                      {comp.isActive ? 'Active' : 'Inactive'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {allCompanies.length > 5 && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setLocation("/admin/company")}
+                  data-testid="button-view-all-companies"
+                >
+                  View All {allCompanies.length} Companies
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Super Admin: Recent Payments */}
+      {isSuperAdmin && allPayments && (
+        <Card data-testid="card-recent-payments">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Recent Payments
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {allPayments.slice(0, 5).map((payment) => {
+                const company = allCompanies?.find(c => c.id === payment.companyId);
+                return (
+                  <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`payment-${payment.id}`}>
+                    <div>
+                      <p className="font-medium">{company?.name || `Company #${payment.companyId}`}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(payment.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">${payment.amount} {payment.currency}</p>
+                      <p className={`text-xs capitalize ${
+                        payment.paymentStatus === 'paid' ? 'text-green-600' : 
+                        payment.paymentStatus === 'pending' ? 'text-yellow-600' : 
+                        'text-red-600'
+                      }`}>
+                        {payment.paymentStatus}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              {allPayments.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No payments yet</p>
+              )}
             </div>
           </CardContent>
         </Card>

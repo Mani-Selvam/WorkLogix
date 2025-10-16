@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments,
   type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
@@ -11,7 +11,9 @@ import {
   type ArchiveReport,
   type GroupMessage, type InsertGroupMessage,
   type TaskTimeLog, type InsertTaskTimeLog,
-  type Feedback, type InsertFeedback
+  type Feedback, type InsertFeedback,
+  type SlotPricing, type InsertSlotPricing,
+  type CompanyPayment, type InsertCompanyPayment
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -108,6 +110,17 @@ export interface IStorage {
   createFeedback(feedback: InsertFeedback): Promise<Feedback>;
   getAllFeedbacks(): Promise<Feedback[]>;
   getFeedbacksByUserId(userId: number): Promise<Feedback[]>;
+  
+  // Slot pricing operations
+  createOrUpdateSlotPricing(pricing: InsertSlotPricing): Promise<SlotPricing>;
+  getAllSlotPricing(): Promise<SlotPricing[]>;
+  getSlotPricingByType(slotType: string): Promise<SlotPricing | null>;
+  
+  // Company payment operations
+  createCompanyPayment(payment: InsertCompanyPayment): Promise<CompanyPayment>;
+  getPaymentsByCompanyId(companyId: number): Promise<CompanyPayment[]>;
+  getAllCompanyPayments(): Promise<CompanyPayment[]>;
+  updatePaymentStatus(id: number, status: string): Promise<void>;
   
   // Dashboard stats
   getDashboardStats(): Promise<{
@@ -561,6 +574,54 @@ export class DbStorage implements IStorage {
     return await db.select().from(feedbacks)
       .where(eq(feedbacks.userId, userId))
       .orderBy(desc(feedbacks.createdAt));
+  }
+
+  async createOrUpdateSlotPricing(pricing: InsertSlotPricing): Promise<SlotPricing> {
+    const existing = await this.getSlotPricingByType(pricing.slotType);
+    
+    if (existing) {
+      await db.update(slotPricing)
+        .set({ ...pricing, updatedAt: new Date() })
+        .where(eq(slotPricing.slotType, pricing.slotType));
+      
+      return (await this.getSlotPricingByType(pricing.slotType))!;
+    } else {
+      const result = await db.insert(slotPricing).values(pricing).returning();
+      return result[0];
+    }
+  }
+
+  async getAllSlotPricing(): Promise<SlotPricing[]> {
+    return await db.select().from(slotPricing);
+  }
+
+  async getSlotPricingByType(slotType: string): Promise<SlotPricing | null> {
+    const result = await db.select().from(slotPricing)
+      .where(eq(slotPricing.slotType, slotType))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createCompanyPayment(payment: InsertCompanyPayment): Promise<CompanyPayment> {
+    const result = await db.insert(companyPayments).values(payment).returning();
+    return result[0];
+  }
+
+  async getPaymentsByCompanyId(companyId: number): Promise<CompanyPayment[]> {
+    return await db.select().from(companyPayments)
+      .where(eq(companyPayments.companyId, companyId))
+      .orderBy(desc(companyPayments.createdAt));
+  }
+
+  async getAllCompanyPayments(): Promise<CompanyPayment[]> {
+    return await db.select().from(companyPayments)
+      .orderBy(desc(companyPayments.createdAt));
+  }
+
+  async updatePaymentStatus(id: number, status: string): Promise<void> {
+    await db.update(companyPayments)
+      .set({ paymentStatus: status })
+      .where(eq(companyPayments.id, id));
   }
 
   async getDashboardStats(): Promise<{

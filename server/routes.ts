@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail } from "./email";
@@ -1333,6 +1333,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(feedbacks);
       }
     } catch (error) {
+      next(error);
+    }
+  });
+
+  // Slot Pricing routes (Super Admin only)
+  app.get("/api/slot-pricing", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can access slot pricing" });
+      }
+
+      const pricing = await storage.getAllSlotPricing();
+      res.json(pricing);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/slot-pricing", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can modify slot pricing" });
+      }
+
+      const validatedData = insertSlotPricingSchema.parse(req.body);
+      const pricing = await storage.createOrUpdateSlotPricing(validatedData);
+      
+      res.json(pricing);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Company Payment routes (Super Admin only)
+  app.get("/api/company-payments", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can access company payments" });
+      }
+
+      const { companyId } = req.query;
+      
+      if (companyId) {
+        const payments = await storage.getPaymentsByCompanyId(parseInt(companyId as string));
+        res.json(payments);
+      } else {
+        const payments = await storage.getAllCompanyPayments();
+        res.json(payments);
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/company-payments", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can create company payments" });
+      }
+
+      const validatedData = insertCompanyPaymentSchema.parse(req.body);
+      const payment = await storage.createCompanyPayment(validatedData);
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  app.patch("/api/company-payments/:id/status", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can update payment status" });
+      }
+
+      const { id } = req.params;
+      const validatedData = updatePaymentStatusSchema.parse(req.body);
+      
+      const paymentId = parseInt(id);
+      if (isNaN(paymentId)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      await storage.updatePaymentStatus(paymentId, validatedData.status);
+      res.json({ message: "Payment status updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       next(error);
     }
   });

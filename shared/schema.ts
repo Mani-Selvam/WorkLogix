@@ -126,6 +126,27 @@ export const feedbacks = pgTable("feedbacks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const slotPricing = pgTable("slot_pricing", {
+  id: serial("id").primaryKey(),
+  slotType: varchar("slot_type", { length: 20 }).notNull(),
+  pricePerSlot: integer("price_per_slot").notNull(),
+  currency: varchar("currency", { length: 10 }).notNull().default("USD"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const companyPayments = pgTable("company_payments", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  amount: integer("amount").notNull(),
+  currency: varchar("currency", { length: 10 }).notNull().default("USD"),
+  paymentStatus: varchar("payment_status", { length: 20 }).notNull().default("pending"),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  transactionId: varchar("transaction_id", { length: 255 }),
+  billingPeriodStart: timestamp("billing_period_start").notNull(),
+  billingPeriodEnd: timestamp("billing_period_end").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
   serverId: true,
@@ -224,6 +245,25 @@ export const insertFeedbackSchema = createInsertSchema(feedbacks).omit({
   createdAt: true,
 });
 
+export const insertSlotPricingSchema = createInsertSchema(slotPricing).omit({
+  id: true,
+  updatedAt: true,
+}).extend({
+  slotType: z.enum(['admin', 'member']),
+  pricePerSlot: z.number().min(0, "Price must be non-negative"),
+});
+
+export const insertCompanyPaymentSchema = createInsertSchema(companyPayments).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  paymentStatus: z.enum(['pending', 'paid', 'failed', 'cancelled']),
+});
+
+export const updatePaymentStatusSchema = z.object({
+  status: z.enum(['pending', 'paid', 'failed', 'cancelled']),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -255,3 +295,9 @@ export type ArchiveReport = typeof archiveReports.$inferSelect;
 
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Company = typeof companies.$inferSelect;
+
+export type InsertSlotPricing = z.infer<typeof insertSlotPricingSchema>;
+export type SlotPricing = typeof slotPricing.$inferSelect;
+
+export type InsertCompanyPayment = z.infer<typeof insertCompanyPaymentSchema>;
+export type CompanyPayment = typeof companyPayments.$inferSelect;
