@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { WebSocketServer } from "ws";
+import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 dotenv.config();
 const app = express();
@@ -40,8 +42,32 @@ app.use((req, res, next) => {
     next();
 });
 
+async function initializeSuperAdmin() {
+    try {
+        const superAdminEmail = "superadmin@worklogix.com";
+        const existingSuperAdmin = await storage.getUserByEmail(superAdminEmail);
+        
+        if (!existingSuperAdmin) {
+            const hashedPassword = await bcrypt.hash("worklogix@26", 10);
+            await storage.createUser({
+                email: superAdminEmail,
+                displayName: "Super Admin",
+                password: hashedPassword,
+                role: "super_admin",
+            });
+            log("✅ Super Admin created successfully with email: superadmin@worklogix.com");
+        } else {
+            log("ℹ️  Super Admin already exists");
+        }
+    } catch (error) {
+        console.error("Error initializing super admin:", error);
+    }
+}
+
 (async () => {
     const server = await registerRoutes(app);
+    
+    await initializeSuperAdmin();
 
     const wss = new WebSocketServer({ noServer: true });
 

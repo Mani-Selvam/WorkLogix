@@ -5,7 +5,10 @@ import { z } from "zod";
 
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
+  serverId: varchar("server_id", { length: 50 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
   maxAdmins: integer("max_admins").notNull().default(1),
   maxMembers: integer("max_members").notNull().default(10),
   isActive: boolean("is_active").notNull().default(true),
@@ -15,6 +18,7 @@ export const companies = pgTable("companies", {
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  uniqueUserId: varchar("unique_user_id", { length: 50 }).notNull().unique(),
   email: text("email").notNull().unique(),
   displayName: text("display_name").notNull(),
   password: text("password"),
@@ -124,12 +128,14 @@ export const feedbacks = pgTable("feedbacks", {
 
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
+  serverId: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
+  uniqueUserId: true,
   createdAt: true,
 });
 
@@ -149,6 +155,30 @@ export const firebaseSigninSchema = z.object({
   displayName: z.string().min(1, "Display name is required"),
   photoURL: z.string().optional(),
   firebaseUid: z.string().min(1, "Firebase UID is required"),
+});
+
+export const companyRegistrationSchema = z.object({
+  name: z.string().min(2, "Company name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const superAdminLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const companyAdminLoginSchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  email: z.string().email("Invalid email address"),
+  serverId: z.string().min(1, "Company Server ID is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const companyUserLoginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  serverId: z.string().min(1, "Company Server ID is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({

@@ -15,10 +15,21 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
+function generateUniqueId(prefix: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = '';
+  for (let i = 0; i < 6; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${prefix}-${id}`;
+}
+
 export interface IStorage {
   // Company operations
   createCompany(company: InsertCompany): Promise<Company>;
   getCompanyById(id: number): Promise<Company | null>;
+  getCompanyByServerId(serverId: string): Promise<Company | null>;
+  getCompanyByEmail(email: string): Promise<Company | null>;
   getAllCompanies(): Promise<Company[]>;
   updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void>;
   deleteCompany(id: number): Promise<void>;
@@ -28,8 +39,11 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | null>;
   getUserById(id: number): Promise<User | null>;
   getUserByFirebaseUid(uid: string): Promise<User | null>;
+  getUserByUniqueUserId(uniqueUserId: string): Promise<User | null>;
+  getUserByDisplayName(displayName: string): Promise<User | null>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
+  updateUserPassword(id: number, password: string): Promise<void>;
   getAllUsers(includeDeleted?: boolean): Promise<User[]>;
   deleteUser(id: number): Promise<void>;
   softDeleteUser(id: number): Promise<void>;
@@ -107,12 +121,23 @@ export interface IStorage {
 
 export class DbStorage implements IStorage {
   async createCompany(company: InsertCompany): Promise<Company> {
-    const result = await db.insert(companies).values(company).returning();
+    const serverId = generateUniqueId('CMP');
+    const result = await db.insert(companies).values({ ...company, serverId }).returning();
     return result[0];
   }
 
   async getCompanyById(id: number): Promise<Company | null> {
     const result = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async getCompanyByServerId(serverId: string): Promise<Company | null> {
+    const result = await db.select().from(companies).where(eq(companies.serverId, serverId)).limit(1);
+    return result[0] || null;
+  }
+
+  async getCompanyByEmail(email: string): Promise<Company | null> {
+    const result = await db.select().from(companies).where(eq(companies.email, email)).limit(1);
     return result[0] || null;
   }
 
@@ -147,13 +172,28 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
 
+  async getUserByUniqueUserId(uniqueUserId: string): Promise<User | null> {
+    const result = await db.select().from(users).where(eq(users.uniqueUserId, uniqueUserId)).limit(1);
+    return result[0] || null;
+  }
+
+  async getUserByDisplayName(displayName: string): Promise<User | null> {
+    const result = await db.select().from(users).where(eq(users.displayName, displayName)).limit(1);
+    return result[0] || null;
+  }
+
   async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(user).returning();
+    const uniqueUserId = generateUniqueId('USER');
+    const result = await db.insert(users).values({ ...user, uniqueUserId }).returning();
     return result[0];
   }
 
   async updateUserRole(id: number, role: string): Promise<void> {
     await db.update(users).set({ role }).where(eq(users.id, id));
+  }
+
+  async updateUserPassword(id: number, password: string): Promise<void> {
+    await db.update(users).set({ password }).where(eq(users.id, id));
   }
 
   async getAllUsers(includeDeleted: boolean = false): Promise<User[]> {

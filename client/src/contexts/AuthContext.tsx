@@ -19,6 +19,10 @@ interface AuthContextType {
   userRole: "super_admin" | "company_admin" | "company_member" | null;
   dbUserId: number | null;
   companyId: number | null;
+  setUser: (user: User | null) => void;
+  setUserRole: (role: "super_admin" | "company_admin" | "company_member" | null) => void;
+  setDbUserId: (id: number | null) => void;
+  setCompanyId: (id: number | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -107,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loggingOut, login, signup, signOut, userRole, dbUserId, companyId }}>
+    <AuthContext.Provider value={{ user, loading, loggingOut, login, signup, signOut, userRole, dbUserId, companyId, setUser, setUserRole, setDbUserId, setCompanyId }}>
       {children}
     </AuthContext.Provider>
   );

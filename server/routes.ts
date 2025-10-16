@@ -1,12 +1,164 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { sendReportNotification } from "./email";
+import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Company Registration
+  app.post("/api/auth/register-company", async (req, res, next) => {
+    try {
+      const validatedData = companyRegistrationSchema.parse(req.body);
+      
+      const existingCompany = await storage.getCompanyByEmail(validatedData.email);
+      if (existingCompany) {
+        return res.status(400).json({ message: "Company with this email already exists" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      const company = await storage.createCompany({
+        name: validatedData.name,
+        email: validatedData.email,
+        password: hashedPassword,
+      });
+      
+      await sendCompanyServerIdEmail({
+        companyName: company.name,
+        companyEmail: company.email,
+        serverId: company.serverId,
+      });
+      
+      const { password: _, ...companyWithoutPassword } = company;
+      res.json({ 
+        ...companyWithoutPassword,
+        message: `Company registered successfully! Your Company Server ID is: ${company.serverId}. Please save this ID, it will be required for login. An email has been sent to ${company.email} with your server ID.`
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Super Admin Login
+  app.post("/api/auth/super-admin-login", async (req, res, next) => {
+    try {
+      const validatedData = superAdminLoginSchema.parse(req.body);
+      
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user || user.role !== 'super_admin' || !user.password) {
+        return res.status(401).json({ message: "Invalid credentials or not a super admin" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Company Admin Login
+  app.post("/api/auth/company-admin-login", async (req, res, next) => {
+    try {
+      const validatedData = companyAdminLoginSchema.parse(req.body);
+      
+      const company = await storage.getCompanyByServerId(validatedData.serverId);
+      if (!company) {
+        return res.status(401).json({ message: "Invalid Company Server ID" });
+      }
+      
+      if (company.name !== validatedData.companyName || company.email !== validatedData.email) {
+        return res.status(401).json({ message: "Invalid company credentials" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(validatedData.password, company.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+      
+      const adminUsers = await storage.getUsersByCompanyId(company.id);
+      const adminUser = adminUsers.find(u => u.role === 'company_admin' && u.email === validatedData.email);
+      
+      if (!adminUser) {
+        const hashedUserPassword = await bcrypt.hash(validatedData.password, 10);
+        const newAdmin = await storage.createUser({
+          email: validatedData.email,
+          displayName: validatedData.companyName + ' Admin',
+          password: hashedUserPassword,
+          role: 'company_admin',
+          companyId: company.id,
+        });
+        
+        await sendUserIdEmail({
+          userName: newAdmin.displayName,
+          userEmail: newAdmin.email,
+          uniqueUserId: newAdmin.uniqueUserId,
+          role: newAdmin.role,
+        });
+        
+        const { password: _, ...userWithoutPassword } = newAdmin;
+        return res.json({ 
+          ...userWithoutPassword, 
+          message: `Welcome! Your unique User ID is: ${newAdmin.uniqueUserId}. An email has been sent to ${newAdmin.email} with your user ID.` 
+        });
+      }
+      
+      const { password: _, ...userWithoutPassword } = adminUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Company User Login
+  app.post("/api/auth/company-user-login", async (req, res, next) => {
+    try {
+      const validatedData = companyUserLoginSchema.parse(req.body);
+      
+      const company = await storage.getCompanyByServerId(validatedData.serverId);
+      if (!company) {
+        return res.status(401).json({ message: "Invalid Company Server ID" });
+      }
+      
+      const user = await storage.getUserByDisplayName(validatedData.username);
+      if (!user || user.companyId !== company.id || !user.password) {
+        return res.status(401).json({ message: "Invalid username or company" });
+      }
+      
+      if (user.role === 'super_admin' || user.role === 'company_admin') {
+        return res.status(401).json({ message: "Please use the appropriate login form for your role" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
   // User routes
   app.post("/api/auth/signup", async (req, res, next) => {
     try {
