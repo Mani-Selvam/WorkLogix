@@ -147,6 +147,15 @@ export const companyPayments = pgTable("company_payments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
   serverId: true,
@@ -264,6 +273,15 @@ export const updatePaymentStatusSchema = z.object({
   status: z.enum(['pending', 'paid', 'failed', 'cancelled']),
 });
 
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const passwordResetSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -301,3 +319,5 @@ export type SlotPricing = typeof slotPricing.$inferSelect;
 
 export type InsertCompanyPayment = z.infer<typeof insertCompanyPaymentSchema>;
 export type CompanyPayment = typeof companyPayments.$inferSelect;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

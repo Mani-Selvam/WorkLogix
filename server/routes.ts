@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail } from "./email";
+import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail } from "./email";
+import crypto from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Company Registration
@@ -1453,6 +1454,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updatePaymentStatus(paymentId, validatedData.status);
       res.json({ message: "Payment status updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Password Reset routes
+  app.post("/api/auth/request-password-reset", async (req, res, next) => {
+    try {
+      const validatedData = passwordResetRequestSchema.parse(req.body);
+      
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user) {
+        return res.json({ message: "If an account exists with this email, a password reset link has been sent." });
+      }
+      
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      
+      await storage.createPasswordResetToken(validatedData.email, resetToken, expiresAt);
+      
+      await sendPasswordResetEmail({
+        email: validatedData.email,
+        resetToken,
+        userName: user.displayName,
+      });
+      
+      res.json({ message: "If an account exists with this email, a password reset link has been sent." });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res, next) => {
+    try {
+      const validatedData = passwordResetSchema.parse(req.body);
+      
+      const tokenData = await storage.getPasswordResetToken(validatedData.token);
+      
+      if (!tokenData) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      
+      if (tokenData.used) {
+        return res.status(400).json({ message: "This reset token has already been used" });
+      }
+      
+      if (new Date() > new Date(tokenData.expiresAt)) {
+        return res.status(400).json({ message: "This reset token has expired" });
+      }
+      
+      const user = await storage.getUserByEmail(tokenData.email);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
+      
+      await storage.updateUserPassword(user.id, hashedPassword);
+      
+      if (user.role === 'company_admin' && user.companyId) {
+        await storage.updateCompany(user.companyId, { password: hashedPassword });
+      }
+      
+      await storage.markTokenAsUsed(validatedData.token);
+      
+      res.json({ message: "Password reset successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });

@@ -134,6 +134,48 @@ export async function sendUserIdEmail(userData: {
   }
 }
 
+export async function sendPasswordResetEmail(data: {
+  email: string;
+  resetToken: string;
+  userName?: string;
+}) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    const resetUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/reset-password?token=${data.resetToken}`;
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">Password Reset Request</h2>
+        <p>Dear ${data.userName || 'User'},</p>
+        <p>We received a request to reset your password for your WorkLogix account.</p>
+        
+        <div style="background-color: #f5f5f5; border-left: 4px solid #FF9800; padding: 15px; margin: 20px 0;">
+          <p style="color: #666; font-size: 14px; margin: 5px 0;">Click the button below to reset your password:</p>
+          <a href="${resetUrl}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; margin: 10px 0;">Reset Password</a>
+          <p style="color: #999; font-size: 12px; margin: 10px 0;">Or copy this link: ${resetUrl}</p>
+        </div>
+        
+        <p style="color: #666; font-size: 14px;">⚠️ This link will expire in 1 hour for security purposes.</p>
+        <p style="color: #666; font-size: 14px;">If you didn't request this password reset, please ignore this email.</p>
+        
+        <p>Best regards,<br/>The WorkLogix Team</p>
+      </div>
+    `;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: data.email,
+      subject: 'WorkLogix - Password Reset Request',
+      html: htmlContent,
+    });
+
+    console.log(`Password reset email sent to ${data.email}`);
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+  }
+}
+
 export async function sendReportNotification(reportData: {
   userName: string;
   reportType: string;

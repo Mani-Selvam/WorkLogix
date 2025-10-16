@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens,
   type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
@@ -13,7 +13,8 @@ import {
   type TaskTimeLog, type InsertTaskTimeLog,
   type Feedback, type InsertFeedback,
   type SlotPricing, type InsertSlotPricing,
-  type CompanyPayment, type InsertCompanyPayment
+  type CompanyPayment, type InsertCompanyPayment,
+  type PasswordResetToken
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -121,6 +122,11 @@ export interface IStorage {
   getPaymentsByCompanyId(companyId: number): Promise<CompanyPayment[]>;
   getAllCompanyPayments(): Promise<CompanyPayment[]>;
   updatePaymentStatus(id: number, status: string): Promise<void>;
+  
+  // Password reset operations
+  createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | null>;
+  markTokenAsUsed(token: string): Promise<void>;
   
   // Dashboard stats
   getDashboardStats(): Promise<{
@@ -622,6 +628,26 @@ export class DbStorage implements IStorage {
     await db.update(companyPayments)
       .set({ paymentStatus: status })
       .where(eq(companyPayments.id, id));
+  }
+
+  async createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken> {
+    const result = await db.insert(passwordResetTokens)
+      .values({ email, token, expiresAt })
+      .returning();
+    return result[0];
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | null> {
+    const result = await db.select().from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async markTokenAsUsed(token: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.token, token));
   }
 
   async getDashboardStats(): Promise<{
