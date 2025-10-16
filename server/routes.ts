@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification } from "./email";
@@ -18,7 +18,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-      const role = validatedData.email.toLowerCase().includes("admin") ? "admin" : "user";
+      const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" 
+        : validatedData.email.toLowerCase().includes("admin") ? "company_admin" 
+        : "company_member";
       
       const user = await storage.createUser({
         email: validatedData.email,
@@ -71,7 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user = await storage.getUserByEmail(validatedData.email);
         
         if (!user) {
-          const role = validatedData.email.toLowerCase().includes("admin") ? "admin" : "user";
+          const role = validatedData.email.toLowerCase().includes("superadmin") ? "super_admin" 
+            : validatedData.email.toLowerCase().includes("admin") ? "company_admin" 
+            : "company_member";
           user = await storage.createUser({
             email: validatedData.email,
             displayName: validatedData.displayName,
@@ -136,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
       
-      if (!requestingUser || requestingUser.role !== 'admin') {
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
         return res.status(403).json({ message: "Only admins can delete users" });
       }
       
@@ -160,10 +164,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company routes (Super Admin only)
+  app.post("/api/companies", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can create companies" });
+      }
+
+      const validatedCompany = insertCompanySchema.parse(req.body);
+      const company = await storage.createCompany(validatedCompany);
+      res.json(company);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  app.get("/api/companies", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can view all companies" });
+      }
+
+      const companies = await storage.getAllCompanies();
+      res.json(companies);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/companies/:id", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can view company details" });
+      }
+
+      const company = await storage.getCompanyById(parseInt(req.params.id));
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/companies/:id/users", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can view company users" });
+      }
+
+      const users = await storage.getUsersByCompanyId(parseInt(req.params.id));
+      const usersWithoutPasswords = users.map(({ password: _, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/companies/:id", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can update companies" });
+      }
+
+      const updates = req.body;
+      await storage.updateCompany(parseInt(req.params.id), updates);
+      res.json({ message: "Company updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/companies/:id", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Only super admins can delete companies" });
+      }
+
+      await storage.deleteCompany(parseInt(req.params.id));
+      res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Task routes
   app.post("/api/tasks", async (req, res, next) => {
     try {
-      const validatedTask = insertTaskSchema.parse(req.body);
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const validatedTask = insertTaskSchema.parse({ ...req.body, companyId: requestingUser.companyId });
       const task = await storage.createTask(validatedTask);
       
       if (validatedTask.assignedTo) {
@@ -184,17 +322,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tasks", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { userId, assignedBy } = req.query;
       
       if (userId) {
         const tasks = await storage.getTasksByUserId(parseInt(userId as string));
-        res.json(tasks);
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(tasks);
+        } else {
+          res.json(tasks.filter(task => task.companyId === requestingUser.companyId));
+        }
       } else if (assignedBy) {
         const tasks = await storage.getTasksByAssignedBy(parseInt(assignedBy as string));
-        res.json(tasks);
-      } else {
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(tasks);
+        } else {
+          res.json(tasks.filter(task => task.companyId === requestingUser.companyId));
+        }
+      } else if (requestingUser.role === 'super_admin') {
         const tasks = await storage.getAllTasks();
         res.json(tasks);
+      } else if (requestingUser.companyId) {
+        const tasks = await storage.getTasksByCompanyId(requestingUser.companyId);
+        res.json(tasks);
+      } else {
+        res.json([]);
       }
     } catch (error) {
       next(error);
@@ -203,10 +366,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tasks/:id", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const task = await storage.getTaskById(parseInt(req.params.id));
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
+
+      // Check company access unless super_admin
+      if (requestingUser.role !== 'super_admin' && task.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       res.json(task);
     } catch (error) {
       next(error);
@@ -215,6 +394,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/tasks/:id/status", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const task = await storage.getTaskById(parseInt(req.params.id));
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check company access unless super_admin
+      if (requestingUser.role !== 'super_admin' && task.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { status } = req.body;
       await storage.updateTaskStatus(parseInt(req.params.id), status);
       res.json({ message: "Task status updated" });
@@ -225,6 +424,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/tasks/:id", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const task = await storage.getTaskById(parseInt(req.params.id));
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check company access unless super_admin
+      if (requestingUser.role !== 'super_admin' && task.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const updates = req.body;
       await storage.updateTask(parseInt(req.params.id), updates);
       res.json({ message: "Task updated" });
@@ -235,6 +454,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/tasks/:id", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const task = await storage.getTaskById(parseInt(req.params.id));
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check company access unless super_admin
+      if (requestingUser.role !== 'super_admin' && task.companyId !== requestingUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       await storage.deleteTask(parseInt(req.params.id));
       res.json({ message: "Task deleted" });
     } catch (error) {
@@ -335,7 +574,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Report routes
   app.post("/api/reports", async (req, res, next) => {
     try {
-      const validatedReport = insertReportSchema.parse(req.body);
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      const validatedReport = insertReportSchema.parse({ ...req.body, companyId: requestingUser.companyId });
       const report = await storage.createReport(validatedReport);
       
       // Get user information for email
@@ -361,6 +610,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/reports", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { userId, startDate, endDate } = req.query;
       
       if (userId && startDate && endDate) {
@@ -369,19 +628,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           new Date(startDate as string),
           new Date(endDate as string)
         );
-        res.json(reports);
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(reports);
+        } else {
+          res.json(reports.filter(report => report.companyId === requestingUser.companyId));
+        }
       } else if (userId) {
         const reports = await storage.getReportsByUserId(parseInt(userId as string));
-        res.json(reports);
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(reports);
+        } else {
+          res.json(reports.filter(report => report.companyId === requestingUser.companyId));
+        }
       } else if (startDate && endDate) {
         const reports = await storage.getReportsByDate(
           new Date(startDate as string),
           new Date(endDate as string)
         );
-        res.json(reports);
-      } else {
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(reports);
+        } else {
+          res.json(reports.filter(report => report.companyId === requestingUser.companyId));
+        }
+      } else if (requestingUser.role === 'super_admin') {
         const reports = await storage.getAllReports();
         res.json(reports);
+      } else if (requestingUser.companyId) {
+        const reports = await storage.getReportsByCompanyId(requestingUser.companyId);
+        res.json(reports);
+      } else {
+        res.json([]);
       }
     } catch (error) {
       next(error);
@@ -401,15 +680,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/messages", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { receiverId, unreadOnly } = req.query;
       
       if (receiverId) {
+        // Only super_admin can query other users' messages
+        if (requestingUser.role !== 'super_admin' && parseInt(receiverId as string) !== requestingUser.id) {
+          return res.status(403).json({ message: "You can only view your own messages" });
+        }
+        
         const messages = unreadOnly === 'true'
           ? await storage.getUnreadMessagesByReceiverId(parseInt(receiverId as string))
           : await storage.getMessagesByReceiverId(parseInt(receiverId as string));
         res.json(messages);
-      } else {
+      } else if (requestingUser.role === 'super_admin') {
         const messages = await storage.getAllMessages();
+        res.json(messages);
+      } else {
+        // Default to showing requesting user's own messages
+        const messages = await storage.getMessagesByReceiverId(requestingUser.id);
         res.json(messages);
       }
     } catch (error) {
@@ -437,7 +735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
       
-      if (!requestingUser || requestingUser.role !== 'admin') {
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
         return res.status(403).json({ message: "Only admins can rate users" });
       }
       
@@ -467,17 +765,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/ratings", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { userId, latest } = req.query;
       
       if (userId && latest === 'true') {
         const rating = await storage.getLatestRatingByUserId(parseInt(userId as string));
+        // Check if the user belongs to the same company (unless super_admin)
+        if (rating && requestingUser.role !== 'super_admin') {
+          const ratedUser = await storage.getUserById(rating.userId);
+          if (ratedUser && ratedUser.companyId !== requestingUser.companyId) {
+            return res.status(403).json({ message: "Access denied" });
+          }
+        }
         res.json(rating);
       } else if (userId) {
         const ratings = await storage.getRatingsByUserId(parseInt(userId as string));
-        res.json(ratings);
-      } else {
+        // Filter by company unless super_admin
+        if (requestingUser.role === 'super_admin') {
+          res.json(ratings);
+        } else {
+          // Verify user is in same company
+          const ratedUser = await storage.getUserById(parseInt(userId as string));
+          if (ratedUser && ratedUser.companyId === requestingUser.companyId) {
+            res.json(ratings);
+          } else {
+            res.json([]);
+          }
+        }
+      } else if (requestingUser.role === 'super_admin') {
         const ratings = await storage.getAllRatings();
         res.json(ratings);
+      } else if (requestingUser.companyId) {
+        // Return ratings for users in the same company
+        const companyUsers = await storage.getUsersByCompanyId(requestingUser.companyId);
+        const companyUserIds = companyUsers.map(u => u.id);
+        const allRatings = await storage.getAllRatings();
+        const companyRatings = allRatings.filter(r => companyUserIds.includes(r.userId));
+        res.json(companyRatings);
+      } else {
+        res.json([]);
       }
     } catch (error) {
       next(error);
@@ -558,11 +893,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
       
-      if (!requestingUser || requestingUser.role !== 'admin') {
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
         return res.status(403).json({ message: "Only admins can send announcements" });
+      }
+
+      if (!requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
       }
       
       const messageData = {
+        companyId: requestingUser.companyId,
         senderId: requestingUser.id,
         title: req.body.title,
         message: req.body.message,
@@ -578,14 +918,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/group-messages", async (req, res, next) => {
     try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { limit } = req.query;
       
-      if (limit) {
-        const messages = await storage.getRecentGroupMessages(parseInt(limit as string));
-        res.json(messages);
+      if (requestingUser.role === 'super_admin') {
+        if (limit) {
+          const messages = await storage.getRecentGroupMessages(parseInt(limit as string));
+          res.json(messages);
+        } else {
+          const messages = await storage.getAllGroupMessages();
+          res.json(messages);
+        }
+      } else if (requestingUser.companyId) {
+        const messages = await storage.getGroupMessagesByCompanyId(requestingUser.companyId);
+        if (limit) {
+          res.json(messages.slice(0, parseInt(limit as string)));
+        } else {
+          res.json(messages);
+        }
       } else {
-        const messages = await storage.getAllGroupMessages();
-        res.json(messages);
+        res.json([]);
       }
     } catch (error) {
       next(error);

@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { 
-  users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks,
+  type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
   type Report, type InsertReport,
@@ -15,6 +16,14 @@ import {
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Company operations
+  createCompany(company: InsertCompany): Promise<Company>;
+  getCompanyById(id: number): Promise<Company | null>;
+  getAllCompanies(): Promise<Company[]>;
+  updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void>;
+  deleteCompany(id: number): Promise<void>;
+  getUsersByCompanyId(companyId: number): Promise<User[]>;
+  
   // User operations
   getUserByEmail(email: string): Promise<User | null>;
   getUserById(id: number): Promise<User | null>;
@@ -30,6 +39,7 @@ export interface IStorage {
   getTaskById(id: number): Promise<Task | null>;
   getTasksByUserId(userId: number): Promise<Task[]>;
   getTasksByAssignedBy(assignedBy: number): Promise<Task[]>;
+  getTasksByCompanyId(companyId: number): Promise<Task[]>;
   getAllTasks(): Promise<Task[]>;
   updateTaskStatus(id: number, status: string): Promise<void>;
   updateTask(id: number, updates: Partial<InsertTask>): Promise<void>;
@@ -39,6 +49,7 @@ export interface IStorage {
   createReport(report: InsertReport): Promise<Report>;
   getReportsByUserId(userId: number): Promise<Report[]>;
   getReportsByUserAndDate(userId: number, startDate: Date, endDate: Date): Promise<Report[]>;
+  getReportsByCompanyId(companyId: number): Promise<Report[]>;
   getAllReports(): Promise<Report[]>;
   getReportsByDate(startDate: Date, endDate: Date): Promise<Report[]>;
   
@@ -68,6 +79,7 @@ export interface IStorage {
   // Group message operations
   createGroupMessage(message: InsertGroupMessage): Promise<GroupMessage>;
   getAllGroupMessages(): Promise<GroupMessage[]>;
+  getGroupMessagesByCompanyId(companyId: number): Promise<GroupMessage[]>;
   getRecentGroupMessages(limit: number): Promise<GroupMessage[]>;
   
   // Task time log operations
@@ -94,6 +106,32 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
+  async createCompany(company: InsertCompany): Promise<Company> {
+    const result = await db.insert(companies).values(company).returning();
+    return result[0];
+  }
+
+  async getCompanyById(id: number): Promise<Company | null> {
+    const result = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async getAllCompanies(): Promise<Company[]> {
+    return await db.select().from(companies).where(eq(companies.isActive, true));
+  }
+
+  async updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void> {
+    await db.update(companies).set(updates).where(eq(companies.id, id));
+  }
+
+  async deleteCompany(id: number): Promise<void> {
+    await db.update(companies).set({ isActive: false }).where(eq(companies.id, id));
+  }
+
+  async getUsersByCompanyId(companyId: number): Promise<User[]> {
+    return await db.select().from(users).where(and(eq(users.companyId, companyId), eq(users.isActive, true)));
+  }
+
   async getUserByEmail(email: string): Promise<User | null> {
     const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return result[0] || null;
@@ -160,6 +198,12 @@ export class DbStorage implements IStorage {
       .orderBy(desc(tasks.createdAt));
   }
 
+  async getTasksByCompanyId(companyId: number): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(eq(tasks.companyId, companyId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
   async getAllTasks(): Promise<Task[]> {
     return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
   }
@@ -200,6 +244,12 @@ export class DbStorage implements IStorage {
           lte(reports.createdAt, endDate)
         )
       )
+      .orderBy(desc(reports.createdAt));
+  }
+
+  async getReportsByCompanyId(companyId: number): Promise<Report[]> {
+    return await db.select().from(reports)
+      .where(eq(reports.companyId, companyId))
       .orderBy(desc(reports.createdAt));
   }
 
@@ -342,6 +392,12 @@ export class DbStorage implements IStorage {
 
   async getAllGroupMessages(): Promise<GroupMessage[]> {
     return await db.select().from(groupMessages).orderBy(desc(groupMessages.createdAt));
+  }
+
+  async getGroupMessagesByCompanyId(companyId: number): Promise<GroupMessage[]> {
+    return await db.select().from(groupMessages)
+      .where(eq(groupMessages.companyId, companyId))
+      .orderBy(desc(groupMessages.createdAt));
   }
 
   async getRecentGroupMessages(limit: number): Promise<GroupMessage[]> {

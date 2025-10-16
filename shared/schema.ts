@@ -3,13 +3,24 @@ import { pgTable, text, varchar, timestamp, boolean, integer, serial } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  maxAdmins: integer("max_admins").notNull().default(1),
+  maxMembers: integer("max_members").notNull().default(10),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   displayName: text("display_name").notNull(),
   password: text("password"),
   photoURL: text("photo_url"),
-  role: varchar("role", { length: 20 }).notNull().default("user"),
+  role: varchar("role", { length: 20 }).notNull().default("company_member"),
+  companyId: integer("company_id").references(() => companies.id),
   firebaseUid: text("firebase_uid").unique(),
   isActive: boolean("is_active").notNull().default(true),
   deletedAt: timestamp("deleted_at"),
@@ -18,6 +29,7 @@ export const users = pgTable("users", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
   assignedBy: integer("assigned_by").references(() => users.id),
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -31,6 +43,7 @@ export const tasks = pgTable("tasks", {
 
 export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
   reportType: varchar("report_type", { length: 20 }).notNull(),
   plannedTasks: text("planned_tasks"),
@@ -84,6 +97,7 @@ export const archiveReports = pgTable("archive_reports", {
 
 export const groupMessages = pgTable("group_messages", {
   id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
   senderId: integer("sender_id").references(() => users.id).notNull(),
   message: text("message").notNull(),
   title: varchar("title", { length: 255 }),
@@ -106,6 +120,12 @@ export const feedbacks = pgTable("feedbacks", {
   userId: integer("user_id").references(() => users.id).notNull(),
   message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -202,3 +222,6 @@ export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedbacks.$inferSelect;
 
 export type ArchiveReport = typeof archiveReports.$inferSelect;
+
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type Company = typeof companies.$inferSelect;
