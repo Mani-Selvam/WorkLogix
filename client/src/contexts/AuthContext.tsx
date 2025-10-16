@@ -100,8 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setLoggingOut(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     setUser(null);
     setUserRole(null);
     setDbUserId(null);
