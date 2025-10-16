@@ -136,9 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid Company Server ID" });
       }
       
-      const user = await storage.getUserByDisplayName(validatedData.username);
+      const user = await storage.getUserByUniqueUserId(validatedData.userId);
       if (!user || user.companyId !== company.id || !user.password) {
-        return res.status(401).json({ message: "Invalid username or company" });
+        return res.status(401).json({ message: "Invalid User ID or company" });
       }
       
       if (user.role === 'super_admin' || user.role === 'company_admin') {

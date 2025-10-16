@@ -206,7 +206,7 @@ export const companyAdminLoginSchema = z.object({
 });
 
 export const companyUserLoginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  userId: z.string().min(1, "User ID is required"),
   serverId: z.string().min(1, "Company Server ID is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });

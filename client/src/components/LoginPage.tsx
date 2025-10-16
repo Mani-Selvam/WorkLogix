@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [superAdminData, setSuperAdminData] = useState({ email: "", password: "" });
   const [companyRegData, setCompanyRegData] = useState({ name: "", email: "", password: "" });
   const [companyAdminData, setCompanyAdminData] = useState({ companyName: "", email: "", serverId: "", password: "" });
-  const [companyUserData, setCompanyUserData] = useState({ username: "", serverId: "", password: "" });
+  const [companyUserData, setCompanyUserData] = useState({ userId: "", serverId: "", password: "" });
 
   useEffect(() => {
     if (user && userRole) {
@@ -345,15 +345,15 @@ export default function LoginPage() {
                 <CardContent>
                   <form onSubmit={handleCompanyUserLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="user-username">Username</Label>
+                      <Label htmlFor="user-id">User ID</Label>
                       <Input
-                        id="user-username"
+                        id="user-id"
                         type="text"
-                        placeholder="johndoe"
-                        value={companyUserData.username}
-                        onChange={(e) => setCompanyUserData({ ...companyUserData, username: e.target.value })}
+                        placeholder="USER-ABC123"
+                        value={companyUserData.userId}
+                        onChange={(e) => setCompanyUserData({ ...companyUserData, userId: e.target.value })}
                         required
-                        data-testid="input-user-username"
+                        data-testid="input-user-id"
                       />
                     </div>
                     <div className="space-y-2">
