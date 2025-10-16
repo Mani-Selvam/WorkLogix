@@ -73,6 +73,7 @@ WorkLogix is a comprehensive multi-tenant task management system with a three-ti
 
 -   **Company Information Display**: Shows company name, member counts, slot limits
 -   **Company Management Page**: Edit company settings (name, maxAdmins, maxMembers)
+-   **Company Removal (Super Admin)**: Delete company with confirmation modal and optimistic UI updates
 -   Overview metrics (Total Users, Reports, Tasks, Files) - scoped to company
 -   Task creation and assignment - scoped to company members
 -   User management with rating capability:
@@ -106,7 +107,8 @@ Required Firebase secrets (already configured):
 ## Routes
 
 ### Authentication
--   `/` - Login page (Google Sign-In)
+-   `/` - Login page (Company Registration, Company Admin, Company User)
+-   `/superadmin` - Super Admin login (separate route for enhanced security)
 
 ### Admin Routes
 -   `/admin` - Admin dashboard (protected, admin role only)
@@ -198,6 +200,20 @@ All REST endpoints implemented with company-based authorization:
 -   All authorization logic is ready and will work correctly once authentication is properly implemented
 
 ## Recent Updates
+
+### October 16, 2025 - Authentication & Company Management Enhancements
+- ✅ **User Login Enhancement**: Company users now login with User ID (uniqueUserId) instead of username for better security
+- ✅ **Logout Optimization**: Removed artificial delay, logout now redirects instantly
+- ✅ **Super Admin Isolation**: Moved Super Admin login to dedicated `/superadmin` route
+  - Main login page only shows Company Registration, Company Admin, and Company User tabs
+  - Discrete "Super Admin Access" link on main page for authorized personnel
+  - Enhanced security by separating admin access from regular user flows
+- ✅ **Company Removal Feature**: Super Admin can now remove companies
+  - Delete button (trash icon) next to each company in Dashboard
+  - Confirmation modal: "Are you sure you want to remove [Company Name]?"
+  - Optimistic UI updates: company disappears immediately, rolls back on failure
+  - Proper error handling and loading states
+  - Currently performs soft delete (sets isActive to false)
 
 ### October 16, 2025 - Multi-Tenant Architecture
 - ✅ Implemented three-tier hierarchy (Super Admin → Company Admin → Company Members)
