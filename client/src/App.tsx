@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "@/components/LoginPage";
+import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import UserLayout from "@/components/UserLayout";
 import AdminLayout from "@/components/AdminLayout";
 import Overview from "@/pages/user/Overview";
@@ -60,6 +61,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={LoginPage} />
+      <Route path="/superadmin" component={SuperAdminLogin} />
       <Route path="/user/overview">
         {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}
       </Route>
