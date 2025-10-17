@@ -223,51 +223,52 @@ export default function Users() {
           ) : activeUsers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {activeUsers.map((user) => (
-                <Card key={user.id} data-testid={`card-user-${user.id}`}>
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                <Card key={user.id} data-testid={`card-user-${user.id}`} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-12 w-12 ring-2 ring-background">
                         <AvatarImage src={user.photoURL || ''} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
+                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                           {user.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm sm:text-base truncate">{user.displayName}</h4>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.email}</p>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h4 className="font-semibold text-base truncate">{user.displayName}</h4>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        <Badge 
+                          variant={user.role === 'company_admin' ? 'default' : 'secondary'} 
+                          className="text-xs mt-1"
+                        >
+                          {user.role.replace('_', ' ')}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="text-xs">
-                        {user.role}
-                      </Badge>
-                      {user.role !== 'admin' && (
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="text-xs h-8"
-                            data-testid={`button-rate-user-${user.id}`}
-                            onClick={() => {
-                              setRatingForm({ ...ratingForm, userId: user.id.toString() });
-                              setRatingDialogOpen(true);
-                            }}
-                          >
-                            Rate
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive text-xs h-8"
-                            data-testid={`button-remove-user-${user.id}`}
-                            onClick={() => deleteUserMutation.mutate(user.id)}
-                            disabled={deleteUserMutation.isPending}
-                          >
-                            {deleteUserMutation.isPending ? "..." : "Remove"}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    {user.role === 'company_member' && (
+                      <div className="flex gap-2 mt-4 pt-3 border-t">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-1 text-xs h-8"
+                          data-testid={`button-rate-user-${user.id}`}
+                          onClick={() => {
+                            setRatingForm({ ...ratingForm, userId: user.id.toString() });
+                            setRatingDialogOpen(true);
+                          }}
+                        >
+                          Rate
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-8"
+                          data-testid={`button-remove-user-${user.id}`}
+                          onClick={() => deleteUserMutation.mutate(user.id)}
+                          disabled={deleteUserMutation.isPending}
+                        >
+                          {deleteUserMutation.isPending ? "..." : "Remove"}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
