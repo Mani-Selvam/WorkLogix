@@ -9,7 +9,7 @@ import crypto from "crypto";
 import Stripe from "stripe";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-09-30.clover" })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1488,22 +1488,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only company admins can purchase slots" });
       }
 
-      const { slotType, quantity, amount } = req.body;
+      const { slotType, quantity } = req.body;
 
-      // Create payment record
+      // Fetch server-side pricing to prevent tampering
+      const pricing = await storage.getSlotPricingByType(slotType);
+      if (!pricing) {
+        return res.status(400).json({ message: "Invalid slot type" });
+      }
+
+      // Calculate amount server-side from authoritative pricing
+      const calculatedAmount = pricing.pricePerSlot * quantity;
+
+      // Create payment record with server-calculated amount
       const payment = await storage.createCompanyPayment({
         companyId: requestingUser.companyId,
         slotType,
         slotQuantity: quantity,
-        amount,
+        amount: calculatedAmount,
         currency: "INR",
         paymentStatus: 'pending',
         paymentMethod: 'stripe',
       });
 
-      // Create Stripe payment intent
+      // Create Stripe payment intent with server-calculated amount
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount * 100, // Convert to paise (INR smallest unit)
+        amount: Math.round(calculatedAmount * 100), // Convert to paise (INR smallest unit)
         currency: "inr",
         metadata: {
           paymentId: payment.id.toString(),
@@ -1549,6 +1558,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payment = await storage.getPaymentById(paymentId);
       if (!payment) {
         return res.status(404).json({ message: "Payment record not found" });
+      }
+
+      // Verify metadata matches to prevent tampering
+      if (paymentIntent.metadata.paymentId !== paymentId.toString()) {
+        return res.status(400).json({ message: "Payment verification failed: metadata mismatch" });
+      }
+
+      // Prevent duplicate processing
+      if (payment.paymentStatus === 'paid') {
+        return res.status(400).json({ message: "Payment already processed" });
       }
 
       // Update payment status

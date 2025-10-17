@@ -71,7 +71,7 @@ export default function CompanyManagement() {
   });
 
   const createPaymentIntentMutation = useMutation({
-    mutationFn: async (data: { slotType: 'admin' | 'member'; quantity: number; amount: number }) => {
+    mutationFn: async (data: { slotType: 'admin' | 'member'; quantity: number }) => {
       setPaymentStatus('creating');
       return await apiRequest('POST', '/api/create-payment-intent', data);
     },
@@ -167,11 +167,7 @@ export default function CompanyManagement() {
   };
 
   const handleConfirmPurchase = () => {
-    const totalAmount = getTotalPrice();
-    createPaymentIntentMutation.mutate({
-      ...purchaseForm,
-      amount: totalAmount,
-    });
+    createPaymentIntentMutation.mutate(purchaseForm);
   };
 
   const handlePaymentSuccess = (paymentIntentId: string) => {
