@@ -19,7 +19,7 @@ export default function LoginPage() {
   
   const [companyRegData, setCompanyRegData] = useState({ name: "", email: "", password: "" });
   const [companyAdminData, setCompanyAdminData] = useState({ companyName: "", email: "", serverId: "", password: "" });
-  const [companyUserData, setCompanyUserData] = useState({ userId: "", serverId: "", password: "" });
+  const [companyUserData, setCompanyUserData] = useState({ username: "", userId: "", password: "" });
 
   useEffect(() => {
     if (user && userRole) {
@@ -276,6 +276,18 @@ export default function LoginPage() {
                 <CardContent>
                   <form onSubmit={handleCompanyUserLogin} className="space-y-4">
                     <div className="space-y-2">
+                      <Label htmlFor="user-username">Username</Label>
+                      <Input
+                        id="user-username"
+                        type="text"
+                        placeholder="John Doe"
+                        value={companyUserData.username}
+                        onChange={(e) => setCompanyUserData({ ...companyUserData, username: e.target.value })}
+                        required
+                        data-testid="input-user-username"
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="user-id">User ID</Label>
                       <Input
                         id="user-id"
@@ -285,18 +297,6 @@ export default function LoginPage() {
                         onChange={(e) => setCompanyUserData({ ...companyUserData, userId: e.target.value })}
                         required
                         data-testid="input-user-id"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="user-server-id">Company Server ID</Label>
-                      <Input
-                        id="user-server-id"
-                        type="text"
-                        placeholder="CMP-XYZ123"
-                        value={companyUserData.serverId}
-                        onChange={(e) => setCompanyUserData({ ...companyUserData, serverId: e.target.value })}
-                        required
-                        data-testid="input-user-server-id"
                       />
                     </div>
                     <div className="space-y-2">

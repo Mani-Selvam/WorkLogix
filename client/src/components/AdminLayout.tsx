@@ -46,8 +46,19 @@ const bottomNavItems: BottomNavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, signOut, loggingOut } = useAuth();
+  const { user, userRole, signOut, loggingOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const isSuperAdmin = userRole === 'super_admin';
+  const sectionsToHideFromSuperAdmin = ['/admin/reports', '/admin/tasks', '/admin/messages', '/admin/ratings', '/admin/feedback'];
+  
+  const filteredNavItems = isSuperAdmin 
+    ? navItems.filter(item => !sectionsToHideFromSuperAdmin.includes(item.path))
+    : navItems;
+  
+  const filteredBottomNavItems = isSuperAdmin
+    ? bottomNavItems.filter(item => !sectionsToHideFromSuperAdmin.includes(item.path))
+    : bottomNavItems;
 
   const handleLogout = async () => {
     await signOut();
@@ -76,7 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-1">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = location === item.path;
             const Icon = item.icon;
             
@@ -151,7 +162,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Bottom Navigation for Mobile */}
-        <BottomNav items={bottomNavItems} />
+        <BottomNav items={filteredBottomNavItems} />
       </main>
     </div>
   );

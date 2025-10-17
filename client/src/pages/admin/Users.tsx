@@ -67,6 +67,8 @@ export default function Users() {
       return await apiRequest('DELETE', `/api/users/${userId}`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users?includeDeleted=true'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
       toast({
         title: "User removed successfully",
         description: "The user has been deleted from the system.",

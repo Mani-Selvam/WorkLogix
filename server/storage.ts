@@ -16,7 +16,7 @@ import {
   type CompanyPayment, type InsertCompanyPayment,
   type PasswordResetToken
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 
 function generateUniqueId(prefix: string): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -169,7 +169,54 @@ export class DbStorage implements IStorage {
   }
 
   async deleteCompany(id: number): Promise<void> {
-    await db.update(companies).set({ isActive: false }).where(eq(companies.id, id));
+    const companyUsers = await db.select().from(users).where(eq(users.companyId, id));
+    const userIds = companyUsers.map(u => u.id);
+    const companyTasks = await db.select().from(tasks).where(eq(tasks.companyId, id));
+    const taskIds = companyTasks.map(t => t.id);
+
+    if (taskIds.length > 0) {
+      await db.delete(taskTimeLogs).where(
+        inArray(taskTimeLogs.taskId, taskIds)
+      );
+    }
+
+    if (userIds.length > 0) {
+      await db.delete(messages).where(
+        or(
+          inArray(messages.senderId, userIds),
+          inArray(messages.receiverId, userIds)
+        )
+      );
+      await db.delete(ratings).where(
+        or(
+          inArray(ratings.userId, userIds),
+          inArray(ratings.ratedBy, userIds)
+        )
+      );
+      await db.delete(fileUploads).where(
+        inArray(fileUploads.userId, userIds)
+      );
+      await db.delete(feedbacks).where(
+        inArray(feedbacks.userId, userIds)
+      );
+      await db.delete(archiveReports).where(
+        inArray(archiveReports.userId, userIds)
+      );
+      
+      const userEmails = companyUsers.map(u => u.email);
+      if (userEmails.length > 0) {
+        await db.delete(passwordResetTokens).where(
+          inArray(passwordResetTokens.email, userEmails)
+        );
+      }
+    }
+
+    await db.delete(groupMessages).where(eq(groupMessages.companyId, id));
+    await db.delete(reports).where(eq(reports.companyId, id));
+    await db.delete(tasks).where(eq(tasks.companyId, id));
+    await db.delete(companyPayments).where(eq(companyPayments.companyId, id));
+    await db.delete(users).where(eq(users.companyId, id));
+    await db.delete(companies).where(eq(companies.id, id));
   }
 
   async getUsersByCompanyId(companyId: number): Promise<User[]> {

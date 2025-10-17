@@ -131,14 +131,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = companyUserLoginSchema.parse(req.body);
       
-      const company = await storage.getCompanyByServerId(validatedData.serverId);
-      if (!company) {
-        return res.status(401).json({ message: "Invalid Company Server ID" });
+      const user = await storage.getUserByUniqueUserId(validatedData.userId);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid User ID" });
       }
       
-      const user = await storage.getUserByUniqueUserId(validatedData.userId);
-      if (!user || user.companyId !== company.id || !user.password) {
-        return res.status(401).json({ message: "Invalid User ID or company" });
+      if (user.displayName !== validatedData.username) {
+        return res.status(401).json({ message: "Invalid username" });
       }
       
       if (user.role === 'super_admin' || user.role === 'company_admin') {
