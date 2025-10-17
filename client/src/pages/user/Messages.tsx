@@ -26,8 +26,17 @@ export default function Messages() {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: number) => {
+      const user = localStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers["x-user-id"] = userId.toString();
+      }
+      
       const res = await fetch(`/api/messages/${messageId}/read`, {
         method: 'PATCH',
+        headers,
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to mark message as read');
     },
