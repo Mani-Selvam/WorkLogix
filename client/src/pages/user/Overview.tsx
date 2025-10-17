@@ -19,9 +19,16 @@ export default function Overview() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['/api/user/stats', dbUserId],
     queryFn: async () => {
-      const tasks = await fetch(`/api/tasks?userId=${dbUserId}`).then(r => r.json());
-      const reports = await fetch(`/api/reports?userId=${dbUserId}`).then(r => r.json());
-      const ratings = await fetch(`/api/ratings?userId=${dbUserId}`).then(r => r.json());
+      const user = localStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers["x-user-id"] = userId.toString();
+      }
+      
+      const tasks = await fetch(`/api/tasks?userId=${dbUserId}`, { headers, credentials: "include" }).then(r => r.json());
+      const reports = await fetch(`/api/reports?userId=${dbUserId}`, { headers, credentials: "include" }).then(r => r.json());
+      const ratings = await fetch(`/api/ratings?userId=${dbUserId}`, { headers, credentials: "include" }).then(r => r.json());
       
       return {
         totalTasks: tasks.length,

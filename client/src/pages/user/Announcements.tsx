@@ -8,7 +8,14 @@ export default function Announcements() {
   const { data: announcements = [], isLoading } = useQuery<GroupMessage[]>({
     queryKey: ['/api/group-messages'],
     queryFn: async () => {
-      const res = await fetch('/api/group-messages');
+      const user = localStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers["x-user-id"] = userId.toString();
+      }
+      
+      const res = await fetch('/api/group-messages', { headers, credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch announcements');
       return res.json();
     },

@@ -11,7 +11,14 @@ export default function ReportView() {
   const { data: reports = [], isLoading } = useQuery<Report[]>({
     queryKey: ['/api/reports', dbUserId],
     queryFn: async () => {
-      const res = await fetch(`/api/reports?userId=${dbUserId}`);
+      const user = localStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers["x-user-id"] = userId.toString();
+      }
+      
+      const res = await fetch(`/api/reports?userId=${dbUserId}`, { headers, credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch reports');
       return res.json();
     },

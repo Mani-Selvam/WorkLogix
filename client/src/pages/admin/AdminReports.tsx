@@ -23,13 +23,21 @@ export default function AdminReports() {
   const { data: reports = [], isLoading: reportsLoading } = useQuery<Report[]>({
     queryKey: ['/api/reports', dateFilter.startDate, dateFilter.endDate],
     queryFn: async () => {
+      const user = localStorage.getItem('user');
+      const userId = user ? JSON.parse(user).id : null;
+      
       let url = '/api/reports';
       const params = new URLSearchParams();
       if (dateFilter.startDate) params.append('startDate', dateFilter.startDate);
       if (dateFilter.endDate) params.append('endDate', dateFilter.endDate);
       if (params.toString()) url += `?${params.toString()}`;
       
-      const res = await fetch(url);
+      const headers: Record<string, string> = {};
+      if (userId) {
+        headers["x-user-id"] = userId.toString();
+      }
+      
+      const res = await fetch(url, { headers, credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch reports');
       return res.json();
     },
