@@ -122,7 +122,9 @@ export interface IStorage {
   createCompanyPayment(payment: InsertCompanyPayment): Promise<CompanyPayment>;
   getPaymentsByCompanyId(companyId: number): Promise<CompanyPayment[]>;
   getAllCompanyPayments(): Promise<CompanyPayment[]>;
-  updatePaymentStatus(id: number, status: string): Promise<void>;
+  getPaymentById(id: number): Promise<CompanyPayment | null>;
+  updatePaymentStatus(id: number, updates: { paymentStatus: string; transactionId?: string }): Promise<void>;
+  updatePaymentStripeId(id: number, stripePaymentIntentId: string): Promise<void>;
   
   // Password reset operations
   createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
@@ -690,9 +692,22 @@ export class DbStorage implements IStorage {
       .orderBy(desc(companyPayments.createdAt));
   }
 
-  async updatePaymentStatus(id: number, status: string): Promise<void> {
+  async getPaymentById(id: number): Promise<CompanyPayment | null> {
+    const result = await db.select().from(companyPayments)
+      .where(eq(companyPayments.id, id))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async updatePaymentStatus(id: number, updates: { paymentStatus: string; transactionId?: string }): Promise<void> {
     await db.update(companyPayments)
-      .set({ paymentStatus: status })
+      .set(updates)
+      .where(eq(companyPayments.id, id));
+  }
+
+  async updatePaymentStripeId(id: number, stripePaymentIntentId: string): Promise<void> {
+    await db.update(companyPayments)
+      .set({ stripePaymentIntentId })
       .where(eq(companyPayments.id, id));
   }
 

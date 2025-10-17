@@ -3,14 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, UserCog, Plus, Save, ShoppingCart } from "lucide-react";
+import { Building2, Users, UserCog, Plus, Save, ShoppingCart, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SlotPricing } from "@shared/schema";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import StripeCheckoutForm from "@/components/StripeCheckoutForm";
 
 interface CompanyData {
   id: number;
@@ -22,6 +26,8 @@ interface CompanyData {
   isActive: boolean;
 }
 
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
+
 export default function CompanyManagement() {
   const { dbUserId, userRole } = useAuth();
   const { toast } = useToast();
@@ -29,6 +35,10 @@ export default function CompanyManagement() {
   const [formData, setFormData] = useState({ name: "", maxAdmins: 1, maxMembers: 10 });
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [purchaseForm, setPurchaseForm] = useState({ slotType: 'admin' as 'admin' | 'member', quantity: 1 });
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'confirming' | 'creating' | 'processing' | 'success' | 'failed'>('idle');
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [paymentId, setPaymentId] = useState<number | null>(null);
 
   const { data: company, isLoading } = useQuery<CompanyData>({
     queryKey: ['/api/my-company'],
@@ -60,24 +70,56 @@ export default function CompanyManagement() {
     },
   });
 
-  const purchaseSlotsMutation = useMutation({
-    mutationFn: async (data: { slotType: 'admin' | 'member'; quantity: number }) => {
-      return await apiRequest('POST', '/api/purchase-slots', data);
+  const createPaymentIntentMutation = useMutation({
+    mutationFn: async (data: { slotType: 'admin' | 'member'; quantity: number; amount: number }) => {
+      setPaymentStatus('creating');
+      return await apiRequest('POST', '/api/create-payment-intent', data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
+    onSuccess: (data: any) => {
+      setClientSecret(data.clientSecret);
+      setPaymentId(data.paymentId);
+      setPaymentStatus('processing');
+      setConfirmDialogOpen(false);
       toast({
-        title: "Success",
-        description: "Slots purchased successfully",
+        title: "Redirecting to payment gateway...",
+        description: "Please complete your payment",
       });
-      setPurchaseDialogOpen(false);
-      setPurchaseForm({ slotType: 'admin', quantity: 1 });
     },
     onError: (error: any) => {
+      setPaymentStatus('failed');
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to purchase slots",
+        description: error.message || "Failed to create payment",
+      });
+    },
+  });
+
+  const verifyPaymentMutation = useMutation({
+    mutationFn: async (paymentIntentId: string) => {
+      return await apiRequest('POST', '/api/verify-payment', { paymentIntentId, paymentId });
+    },
+    onSuccess: () => {
+      setPaymentStatus('success');
+      queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
+      toast({
+        title: "🎉 Payment Successful!",
+        description: "Slots have been added to your account",
+      });
+      setTimeout(() => {
+        setPurchaseDialogOpen(false);
+        setPaymentStatus('idle');
+        setClientSecret("");
+        setPaymentId(null);
+        setPurchaseForm({ slotType: 'admin', quantity: 1 });
+      }, 2000);
+    },
+    onError: (error: any) => {
+      setPaymentStatus('failed');
+      toast({
+        variant: "destructive",
+        title: "Payment Verification Failed",
+        description: error.message || "Please contact support",
       });
     },
   });
@@ -120,8 +162,30 @@ export default function CompanyManagement() {
     setPurchaseDialogOpen(true);
   };
 
-  const handlePurchase = () => {
-    purchaseSlotsMutation.mutate(purchaseForm);
+  const handleInitiatePurchase = () => {
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmPurchase = () => {
+    const totalAmount = getTotalPrice();
+    createPaymentIntentMutation.mutate({
+      ...purchaseForm,
+      amount: totalAmount,
+    });
+  };
+
+  const handlePaymentSuccess = (paymentIntentId: string) => {
+    verifyPaymentMutation.mutate(paymentIntentId);
+  };
+
+  const handlePaymentFailure = () => {
+    setPaymentStatus('failed');
+  };
+
+  const handleRetryPayment = () => {
+    setPaymentStatus('idle');
+    setClientSecret("");
+    setConfirmDialogOpen(true);
   };
 
   const getTotalPrice = () => {
@@ -423,17 +487,105 @@ export default function CompanyManagement() {
                 </div>
               </div>
             </div>
-            <Button 
-              className="w-full" 
-              onClick={handlePurchase}
-              disabled={purchaseSlotsMutation.isPending || !slotPricing || slotPricing.length === 0}
-              data-testid="button-confirm-purchase"
-            >
-              {purchaseSlotsMutation.isPending ? "Processing..." : "Confirm Purchase"}
-            </Button>
+            {/* Payment Status Display */}
+            {paymentStatus === 'idle' && (
+              <Button 
+                className="w-full" 
+                onClick={handleInitiatePurchase}
+                disabled={!slotPricing || slotPricing.length === 0}
+                data-testid="button-confirm-purchase"
+              >
+                Proceed to Payment
+              </Button>
+            )}
+
+            {paymentStatus === 'processing' && clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <StripeCheckoutForm 
+                  onSuccess={handlePaymentSuccess}
+                  onFailure={handlePaymentFailure}
+                  amount={getTotalPrice()}
+                />
+              </Elements>
+            )}
+
+            {paymentStatus === 'creating' && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-3">Generating secure payment link...</span>
+              </div>
+            )}
+
+            {paymentStatus === 'success' && (
+              <div className="text-center py-8 space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+                <div>
+                  <h3 className="text-lg font-semibold">🎉 Payment Successful!</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Transaction ID: {paymentId}
+                    <br />
+                    Amount: ₹{getTotalPrice()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {paymentStatus === 'failed' && (
+              <div className="text-center py-8 space-y-4">
+                <XCircle className="h-16 w-16 text-red-500 mx-auto" />
+                <div>
+                  <h3 className="text-lg font-semibold">⚠️ Payment Failed or Cancelled</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Your payment could not be processed.
+                  </p>
+                </div>
+                <Button onClick={handleRetryPayment} variant="outline" className="w-full">
+                  🔁 Retry Payment
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent data-testid="dialog-payment-confirmation">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to proceed with the payment of <span className="font-bold text-primary">₹{getTotalPrice()}</span>?
+              <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
+                <div className="flex justify-between mb-1">
+                  <span>Slot Type:</span>
+                  <span className="font-medium capitalize">{purchaseForm.slotType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Quantity:</span>
+                  <span className="font-medium">{purchaseForm.quantity} slots</span>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-payment">❌ Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmPurchase}
+              disabled={createPaymentIntentMutation.isPending}
+              data-testid="button-proceed-payment"
+            >
+              {createPaymentIntentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Order...
+                </>
+              ) : (
+                "✅ Yes, Proceed"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

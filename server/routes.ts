@@ -6,6 +6,11 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail } from "./email";
 import crypto from "crypto";
+import Stripe from "stripe";
+
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-09-30.clover" })
+  : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Company Registration
@@ -1462,6 +1467,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe Payment Intent Creation
+  app.post("/api/create-payment-intent", async (req, res, next) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment gateway not configured" });
+      }
+
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      if (requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Only company admins can purchase slots" });
+      }
+
+      const { slotType, quantity, amount } = req.body;
+
+      // Create payment record
+      const payment = await storage.createCompanyPayment({
+        companyId: requestingUser.companyId,
+        slotType,
+        slotQuantity: quantity,
+        amount,
+        currency: "INR",
+        paymentStatus: 'pending',
+        paymentMethod: 'stripe',
+      });
+
+      // Create Stripe payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, // Convert to paise (INR smallest unit)
+        currency: "inr",
+        metadata: {
+          paymentId: payment.id.toString(),
+          companyId: requestingUser.companyId.toString(),
+          slotType,
+          quantity: quantity.toString(),
+        },
+      });
+
+      // Update payment with Stripe payment intent ID
+      await storage.updatePaymentStripeId(payment.id, paymentIntent.id);
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentId: payment.id,
+      });
+    } catch (error: any) {
+      console.error("Payment intent creation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Verify Payment and Update Slots
+  app.post("/api/verify-payment", async (req, res, next) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment gateway not configured" });
+      }
+
+      const { paymentIntentId, paymentId } = req.body;
+
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not successful" });
+      }
+
+      // Get payment record
+      const payment = await storage.getPaymentById(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment record not found" });
+      }
+
+      // Update payment status
+      await storage.updatePaymentStatus(paymentId, {
+        paymentStatus: 'paid',
+        transactionId: paymentIntent.id,
+      });
+
+      // Update company slots
+      const updateData = payment.slotType === 'admin'
+        ? { maxAdmins: payment.slotQuantity || 0 }
+        : { maxMembers: payment.slotQuantity || 0 };
+
+      await storage.incrementCompanySlots(payment.companyId, updateData);
+
+      res.json({ 
+        success: true, 
+        message: "Payment verified and slots added successfully",
+        payment,
+      });
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+      next(error);
+    }
+  });
+
   // Company Payment routes (Super Admin only)
   app.get("/api/company-payments", async (req, res, next) => {
     try {
@@ -1532,7 +1645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid payment ID" });
       }
       
-      await storage.updatePaymentStatus(paymentId, validatedData.status);
+      await storage.updatePaymentStatus(paymentId, { paymentStatus: validatedData.status });
       res.json({ message: "Payment status updated successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
