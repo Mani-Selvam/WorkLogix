@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@shared/schema";
-import { Plus, Users as UsersIcon } from "lucide-react";
+import { Plus, Users as UsersIcon, Copy, CheckCircle } from "lucide-react";
 
 interface CompanyData {
   id: number;
@@ -30,6 +31,14 @@ export default function Users() {
   const { dbUserId, companyId, userRole } = useAuth();
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [createdUserCredentials, setCreatedUserCredentials] = useState<{
+    email: string;
+    password: string;
+    uniqueUserId: string;
+    displayName: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [ratingForm, setRatingForm] = useState({
     userId: "",
     rating: "",
@@ -111,14 +120,19 @@ export default function Users() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof userForm) => {
-      return await apiRequest('POST', '/api/users', userData);
+      const response = await apiRequest('POST', '/api/users', userData);
+      return await response.json() as User;
     },
-    onSuccess: () => {
-      toast({
-        title: "User added successfully",
+    onSuccess: (data: User) => {
+      setCreatedUserCredentials({
+        email: data.email,
+        password: userForm.password,
+        uniqueUserId: data.uniqueUserId,
+        displayName: data.displayName,
       });
       setUserForm({ email: "", displayName: "", password: "", role: "company_member" });
       setAddUserDialogOpen(false);
+      setCredentialsDialogOpen(true);
       queryClient.invalidateQueries({ queryKey: ['/api/users?includeDeleted=true'] });
       queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
     },
@@ -130,6 +144,24 @@ export default function Users() {
       });
     },
   });
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      toast({
+        title: "Copied to clipboard",
+        description: `${field} has been copied`,
+      });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please copy manually",
+        variant: "destructive",
+      });
+    }
+  };
 
   const canAddAdmin = !adminSlots || adminSlots.available > 0;
   const canAddMember = !memberSlots || memberSlots.available > 0;
@@ -432,6 +464,140 @@ export default function Users() {
               {createUserMutation.isPending ? "Adding..." : "Add User"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              User Created Successfully
+            </DialogTitle>
+            <DialogDescription>
+              Share these credentials with the user so they can log in. They will need all three pieces of information.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {createdUserCredentials && (
+            <div className="space-y-4">
+              <Alert data-testid="alert-user-credentials">
+                <AlertDescription className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium mb-2">Login Instructions for User:</p>
+                    <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                      <li>Go to the login page and select "Company User" tab</li>
+                      <li>Enter the Username, User ID, and Password provided below</li>
+                      <li>Click "Login" to access the company dashboard</li>
+                    </ol>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-3">
+                <div className="bg-muted p-4 rounded-lg space-y-1">
+                  <Label className="text-sm text-muted-foreground">Username (Display Name)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono font-semibold" data-testid="text-created-username">
+                      {createdUserCredentials.displayName}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(createdUserCredentials.displayName, 'Username')}
+                      data-testid="button-copy-username"
+                    >
+                      {copiedField === 'Username' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg space-y-1">
+                  <Label className="text-sm text-muted-foreground">User ID (Required for Login)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono font-semibold" data-testid="text-created-userid">
+                      {createdUserCredentials.uniqueUserId}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(createdUserCredentials.uniqueUserId, 'User ID')}
+                      data-testid="button-copy-userid"
+                    >
+                      {copiedField === 'User ID' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg space-y-1">
+                  <Label className="text-sm text-muted-foreground">Email</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono font-semibold" data-testid="text-created-email">
+                      {createdUserCredentials.email}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(createdUserCredentials.email, 'Email')}
+                      data-testid="button-copy-email"
+                    >
+                      {copiedField === 'Email' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg space-y-1">
+                  <Label className="text-sm text-muted-foreground">Password (Set by Admin)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono font-semibold" data-testid="text-created-password">
+                      {createdUserCredentials.password}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(createdUserCredentials.password, 'Password')}
+                      data-testid="button-copy-password"
+                    >
+                      {copiedField === 'Password' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Alert variant="default" className="border-amber-200 bg-amber-50">
+                <AlertDescription className="text-sm text-amber-800">
+                  ⚠️ Important: Save these credentials now. The password will not be shown again for security reasons.
+                </AlertDescription>
+              </Alert>
+
+              <Button
+                onClick={() => {
+                  setCredentialsDialogOpen(false);
+                  setCreatedUserCredentials(null);
+                }}
+                className="w-full"
+                data-testid="button-close-credentials"
+              >
+                I've Saved the Credentials
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

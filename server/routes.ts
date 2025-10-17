@@ -136,6 +136,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid User ID" });
       }
       
+      if (!user.isActive) {
+        return res.status(401).json({ message: "Account is inactive. Please contact your administrator." });
+      }
+      
+      if (!user.companyId) {
+        return res.status(401).json({ message: "User is not associated with any company" });
+      }
+      
       if (user.displayName !== validatedData.username) {
         return res.status(401).json({ message: "Invalid username" });
       }
