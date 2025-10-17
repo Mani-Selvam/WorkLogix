@@ -129,7 +129,7 @@ export default function AdminMessages() {
                     <SelectValue placeholder="Choose a user" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.filter(u => u.role === 'user').map(user => (
+                    {users.filter(u => u.role === 'company_member').map(user => (
                       <SelectItem key={user.id} value={user.id.toString()}>
                         {user.displayName}
                       </SelectItem>
