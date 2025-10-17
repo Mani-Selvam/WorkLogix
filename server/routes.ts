@@ -1357,7 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Slot Pricing routes (Super Admin only)
+  // Slot Pricing routes
   app.get("/api/slot-pricing", async (req, res, next) => {
     try {
       const requestingUserId = req.headers['x-user-id'];
@@ -1366,8 +1366,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
-      if (!requestingUser || requestingUser.role !== 'super_admin') {
-        return res.status(403).json({ message: "Only super admins can access slot pricing" });
+      if (!requestingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Allow super_admin and company_admin to view pricing
+      if (requestingUser.role !== 'super_admin' && requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Access denied" });
       }
 
       const pricing = await storage.getAllSlotPricing();

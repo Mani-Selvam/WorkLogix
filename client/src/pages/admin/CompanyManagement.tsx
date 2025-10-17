@@ -343,17 +343,38 @@ export default function CompanyManagement() {
 
       {/* Slot Purchase Dialog */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
-        <DialogContent data-testid="dialog-purchase-slots">
+        <DialogContent data-testid="dialog-purchase-slots" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
               Purchase Slots
             </DialogTitle>
             <DialogDescription>
-              Buy additional {purchaseForm.slotType} slots for your company
+              Buy additional slots for your company
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Pricing Info */}
+            {slotPricing && slotPricing.length > 0 && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-medium text-primary">Current Slot Rates:</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Admin Slot:</span>
+                    <span className="font-semibold ml-1" data-testid="text-admin-rate">
+                      ₹{slotPricing.find(p => p.slotType === 'admin')?.pricePerSlot || 0}/slot
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Member Slot:</span>
+                    <span className="font-semibold ml-1" data-testid="text-member-rate">
+                      ₹{slotPricing.find(p => p.slotType === 'member')?.pricePerSlot || 0}/slot
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="slot-type">Slot Type</Label>
               <Select 
@@ -384,7 +405,7 @@ export default function CompanyManagement() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-muted-foreground">Price per slot</span>
                 <span className="font-medium" data-testid="text-price-per-slot">
-                  ${slotPricing?.find(p => p.slotType === purchaseForm.slotType)?.pricePerSlot || 0}
+                  ₹{slotPricing?.find(p => p.slotType === purchaseForm.slotType)?.pricePerSlot || 0}
                 </span>
               </div>
               <div className="flex justify-between items-center mb-2">
@@ -397,7 +418,7 @@ export default function CompanyManagement() {
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total Amount</span>
                   <span className="text-2xl font-bold text-primary" data-testid="text-total-amount">
-                    ${getTotalPrice()}
+                    ₹{getTotalPrice()}
                   </span>
                 </div>
               </div>
@@ -405,7 +426,7 @@ export default function CompanyManagement() {
             <Button 
               className="w-full" 
               onClick={handlePurchase}
-              disabled={purchaseSlotsMutation.isPending}
+              disabled={purchaseSlotsMutation.isPending || !slotPricing || slotPricing.length === 0}
               data-testid="button-confirm-purchase"
             >
               {purchaseSlotsMutation.isPending ? "Processing..." : "Confirm Purchase"}
