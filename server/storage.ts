@@ -35,6 +35,7 @@ export interface IStorage {
   getCompanyByEmail(email: string): Promise<Company | null>;
   getAllCompanies(): Promise<Company[]>;
   updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void>;
+  incrementCompanySlots(id: number, updates: { maxAdmins?: number; maxMembers?: number }): Promise<void>;
   deleteCompany(id: number): Promise<void>;
   getUsersByCompanyId(companyId: number): Promise<User[]>;
   
@@ -129,7 +130,7 @@ export interface IStorage {
   markTokenAsUsed(token: string): Promise<void>;
   
   // Dashboard stats
-  getDashboardStats(): Promise<{
+  getDashboardStats(companyId?: number): Promise<{
     totalUsers: number;
     todayReports: number;
     pendingTasks: number;
@@ -166,6 +167,24 @@ export class DbStorage implements IStorage {
 
   async updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void> {
     await db.update(companies).set(updates).where(eq(companies.id, id));
+  }
+
+  async incrementCompanySlots(id: number, updates: { maxAdmins?: number; maxMembers?: number }): Promise<void> {
+    const company = await this.getCompanyById(id);
+    if (!company) {
+      throw new Error("Company not found");
+    }
+
+    const newMaxAdmins = updates.maxAdmins ? company.maxAdmins + updates.maxAdmins : company.maxAdmins;
+    const newMaxMembers = updates.maxMembers ? company.maxMembers + updates.maxMembers : company.maxMembers;
+
+    await db.update(companies)
+      .set({ 
+        maxAdmins: newMaxAdmins, 
+        maxMembers: newMaxMembers,
+        updatedAt: new Date()
+      })
+      .where(eq(companies.id, id));
   }
 
   async deleteCompany(id: number): Promise<void> {
@@ -697,7 +716,7 @@ export class DbStorage implements IStorage {
       .where(eq(passwordResetTokens.token, token));
   }
 
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(companyId?: number): Promise<{
     totalUsers: number;
     todayReports: number;
     pendingTasks: number;
@@ -709,17 +728,40 @@ export class DbStorage implements IStorage {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [userCount] = await db.select({ count: sql<number>`count(*)` }).from(users);
-    const [todayReportCount] = await db.select({ count: sql<number>`count(*)` })
-      .from(reports)
-      .where(gte(reports.createdAt, today));
-    const [pendingTaskCount] = await db.select({ count: sql<number>`count(*)` })
-      .from(tasks)
-      .where(eq(tasks.status, 'pending'));
-    const [completedTaskCount] = await db.select({ count: sql<number>`count(*)` })
-      .from(tasks)
-      .where(eq(tasks.status, 'completed'));
-    const [fileCount] = await db.select({ count: sql<number>`count(*)` }).from(fileUploads);
+    const [userCount] = companyId
+      ? await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.companyId, companyId))
+      : await db.select({ count: sql<number>`count(*)` }).from(users);
+    
+    const [todayReportCount] = companyId
+      ? await db.select({ count: sql<number>`count(*)` })
+          .from(reports)
+          .where(and(gte(reports.createdAt, today), eq(reports.companyId, companyId)))
+      : await db.select({ count: sql<number>`count(*)` })
+          .from(reports)
+          .where(gte(reports.createdAt, today));
+    
+    const [pendingTaskCount] = companyId
+      ? await db.select({ count: sql<number>`count(*)` })
+          .from(tasks)
+          .where(and(eq(tasks.status, 'pending'), eq(tasks.companyId, companyId)))
+      : await db.select({ count: sql<number>`count(*)` })
+          .from(tasks)
+          .where(eq(tasks.status, 'pending'));
+    
+    const [completedTaskCount] = companyId
+      ? await db.select({ count: sql<number>`count(*)` })
+          .from(tasks)
+          .where(and(eq(tasks.status, 'completed'), eq(tasks.companyId, companyId)))
+      : await db.select({ count: sql<number>`count(*)` })
+          .from(tasks)
+          .where(eq(tasks.status, 'completed'));
+    
+    const [fileCount] = companyId
+      ? await db.select({ count: sql<number>`count(*)` })
+          .from(fileUploads)
+          .innerJoin(users, eq(fileUploads.userId, users.id))
+          .where(eq(users.companyId, companyId))
+      : await db.select({ count: sql<number>`count(*)` }).from(fileUploads);
 
     return {
       totalUsers: Number(userCount.count),

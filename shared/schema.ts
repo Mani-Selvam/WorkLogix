@@ -137,13 +137,15 @@ export const slotPricing = pgTable("slot_pricing", {
 export const companyPayments = pgTable("company_payments", {
   id: serial("id").primaryKey(),
   companyId: integer("company_id").references(() => companies.id).notNull(),
+  slotType: varchar("slot_type", { length: 20 }),
+  slotQuantity: integer("slot_quantity"),
   amount: integer("amount").notNull(),
   currency: varchar("currency", { length: 10 }).notNull().default("USD"),
   paymentStatus: varchar("payment_status", { length: 20 }).notNull().default("pending"),
   paymentMethod: varchar("payment_method", { length: 50 }),
   transactionId: varchar("transaction_id", { length: 255 }),
-  billingPeriodStart: timestamp("billing_period_start").notNull(),
-  billingPeriodEnd: timestamp("billing_period_end").notNull(),
+  billingPeriodStart: timestamp("billing_period_start"),
+  billingPeriodEnd: timestamp("billing_period_end"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -266,7 +268,13 @@ export const insertCompanyPaymentSchema = createInsertSchema(companyPayments).om
   id: true,
   createdAt: true,
 }).extend({
+  slotType: z.enum(['admin', 'member']).optional(),
   paymentStatus: z.enum(['pending', 'paid', 'failed', 'cancelled']),
+});
+
+export const slotPurchaseSchema = z.object({
+  slotType: z.enum(['admin', 'member']),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
 });
 
 export const updatePaymentStatusSchema = z.object({

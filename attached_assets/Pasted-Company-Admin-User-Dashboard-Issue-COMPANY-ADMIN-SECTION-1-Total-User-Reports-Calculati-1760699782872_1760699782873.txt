@@ -1,0 +1,120 @@
+Company Admin & User Dashboard – Issue
+🧩 COMPANY ADMIN SECTION
+1️⃣ Total User & Reports Calculation Bug
+
+Issue:
+
+Total user count shows users from all companies.
+
+Total report count also shows all reports instead of only that company’s.
+
+Required Fix:
+
+Filter both counts by company_id.
+
+Display only users and reports belonging to the current admin’s company.
+
+Expected Behavior:
+
+Each company admin can view only their own:
+
+Total users
+
+Total reports
+
+2️⃣ Admin Assigned Task
+
+Issues:
+
+“Add Task” popup cannot fetch company member names.
+
+“Announcements / Communication Center” also fails to show company users.
+
+Required Fix:
+
+Fetch users with:
+WHERE company_id = admin.company_id AND role = 'user'
+
+Only company’s internal members should appear in dropdowns for:
+
+Assign Task
+
+Announcements
+
+Expected Behavior:
+
+Admin can assign tasks and announcements to users of their own company only.
+
+3️⃣ Buy More (Slots Purchase System)
+
+Current Problems:
+
+Popup does not dynamically calculate slot prices.
+
+After payment, slots do not auto-allocate (requires page refresh).
+
+Super Admin cannot view purchased slot details.
+
+Payment receipt is not auto-downloaded or emailed.
+
+Required Fix Flow:
+
+Popup Behavior:
+
+When admin clicks “Buy More”, show popup to select slot type:
+
+Admin slots
+
+Member slots
+
+Auto-update total amount dynamically.
+
+After Payment Success:
+
+Instantly update available slot count (no page refresh).
+
+Save payment details:
+
+Company ID
+
+Number of slots purchased
+
+Payment amount
+
+Date & time
+
+Super Admin Integration:
+
+Display all company purchase logs with:
+
+Company name
+
+Slots purchased (Admin/User)
+
+Amount
+
+Date
+
+Receipt Handling:
+
+Auto-generate and download payment receipt.
+
+Auto-send same receipt to company’s registered email.
+
+Expected Behavior:
+
+Real-time slot allocation after payment.
+
+Super Admin can track all slot purchases.
+
+Email + Auto PDF receipt instantly triggered.
+
+🧭 USER DASHBOARD SECTION
+1️⃣ Reports
+
+Status: Working fine — admin receives reports correctly.
+
+2️⃣ Task Assignment
+
+Issue:
+Admin cannot assign tasks to specific users of their company.

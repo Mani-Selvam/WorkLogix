@@ -337,11 +337,16 @@ export default function Dashboard() {
                 const company = allCompanies?.find(c => c.id === payment.companyId);
                 return (
                   <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`payment-${payment.id}`}>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium">{company?.name || `Company #${payment.companyId}`}</p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(payment.createdAt).toLocaleDateString()}
                       </p>
+                      {payment.slotType && payment.slotQuantity && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {payment.slotQuantity} {payment.slotType} slot{payment.slotQuantity > 1 ? 's' : ''}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-medium">${payment.amount} {payment.currency}</p>

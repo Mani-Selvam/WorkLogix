@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail } from "./email";
@@ -1237,7 +1237,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res, next) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const requestingUserId = req.headers['x-user-id'];
+      
+      let companyId: number | undefined;
+      
+      if (requestingUserId) {
+        const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+        
+        if (requestingUser && requestingUser.role !== 'super_admin' && requestingUser.companyId) {
+          companyId = requestingUser.companyId;
+        }
+      }
+      
+      const stats = await storage.getDashboardStats(companyId);
       res.json(stats);
     } catch (error) {
       next(error);
@@ -1381,6 +1393,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pricing = await storage.createOrUpdateSlotPricing(validatedData);
       
       res.json(pricing);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Purchase Slots
+  app.post("/api/purchase-slots", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      if (requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Only company admins can purchase slots" });
+      }
+
+      const validatedData = slotPurchaseSchema.parse(req.body);
+
+      const pricing = await storage.getSlotPricingByType(validatedData.slotType);
+      if (!pricing) {
+        return res.status(404).json({ message: `Pricing not found for ${validatedData.slotType} slots` });
+      }
+
+      const totalAmount = pricing.pricePerSlot * validatedData.quantity;
+
+      const payment = await storage.createCompanyPayment({
+        companyId: requestingUser.companyId,
+        slotType: validatedData.slotType,
+        slotQuantity: validatedData.quantity,
+        amount: totalAmount,
+        currency: pricing.currency,
+        paymentStatus: 'paid',
+        paymentMethod: 'online',
+        transactionId: `TXN-${Date.now()}`,
+      });
+
+      const updateData = validatedData.slotType === 'admin'
+        ? { maxAdmins: validatedData.quantity }
+        : { maxMembers: validatedData.quantity };
+
+      await storage.incrementCompanySlots(requestingUser.companyId, updateData);
+
+      res.json({ 
+        success: true, 
+        message: `Successfully purchased ${validatedData.quantity} ${validatedData.slotType} slot(s)`,
+        payment 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
