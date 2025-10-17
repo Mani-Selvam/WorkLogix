@@ -247,7 +247,7 @@ export default function CompanyManagement() {
                 />
               </div>
             )}
-            {!isEditing && company.currentAdmins >= company.maxAdmins && (
+            {!isEditing && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -298,7 +298,7 @@ export default function CompanyManagement() {
                 />
               </div>
             )}
-            {!isEditing && company.currentMembers >= company.maxMembers && (
+            {!isEditing && (
               <Button
                 variant="outline"
                 className="w-full"
