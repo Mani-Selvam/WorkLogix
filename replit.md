@@ -51,3 +51,35 @@ I prefer a clear, modern UI with a clean aesthetic, drawing inspiration from too
 -   **Authentication**: Firebase (Google Sign-In)
 -   **Database**: PostgreSQL
 -   **Email Service**: Resend
+
+## Recent Updates
+
+### October 17, 2025 - Critical Company Scoping Bug Fix
+- ✅ **Fixed Multi-Tenant Data Isolation**: Resolved critical bug where admins couldn't see company users and users couldn't see admin data
+- ✅ **Root Cause**: 7 frontend pages used custom `queryFn` implementations that bypassed authentication headers
+  - Custom fetch calls didn't include `x-user-id` header from localStorage
+  - Backend couldn't determine requesting user's company, returned empty results
+- ✅ **Files Fixed** (all now include x-user-id header):
+  - `client/src/pages/admin/AdminReports.tsx`
+  - `client/src/pages/user/Overview.tsx`
+  - `client/src/pages/user/Tasks.tsx`
+  - `client/src/pages/user/Messages.tsx`
+  - `client/src/pages/user/Announcements.tsx`
+  - `client/src/pages/user/ReportView.tsx`
+  - `client/src/pages/user/Ratings.tsx`
+- ✅ **Fixed Mutation**: markAsReadMutation now includes auth header
+- ✅ **Impact**: Fully restored company-scoped data access:
+  - Admins can view users in their company
+  - Users can view admins in their company
+  - Reports visible cross-role within same company
+  - Announcements properly received by users
+  - Messages, tasks, and ratings properly scoped
+
+### October 17, 2025 - Admin-Controlled User Creation & Login Flow
+- ✅ **Enhanced User Creation**: Admin can now create users and immediately view their login credentials
+  - Username (Display Name)
+  - Email
+  - Password (admin-set, shown only once)
+  - Unique User ID (auto-generated)
+- ✅ **Credentials Dialog**: After user creation, admin sees comprehensive credentials with copy-to-clipboard
+- ✅ **Enhanced Login Security**: Company user login validates active status, company membership, and role
