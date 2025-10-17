@@ -83,3 +83,23 @@ I prefer a clear, modern UI with a clean aesthetic, drawing inspiration from too
   - Unique User ID (auto-generated)
 - ✅ **Credentials Dialog**: After user creation, admin sees comprehensive credentials with copy-to-clipboard
 - ✅ **Enhanced Login Security**: Company user login validates active status, company membership, and role
+
+### October 17, 2025 - Dashboard Stats & Slot Purchase System Fixes
+- ✅ **Fixed Dashboard Stats Company Filtering**: 
+  - Updated `getDashboardStats()` to accept optional `companyId` parameter
+  - Company admins now see only their company's users, reports, tasks, and files
+  - Super admins continue to see global stats across all companies
+  - Fixed backend route to pass requesting user's company ID for proper filtering
+- ✅ **Slot Purchase System Implementation**:
+  - **Schema Updates**: Added `slotType` and `slotQuantity` fields to `company_payments` table for detailed tracking
+  - **Purchase Dialog**: Created comprehensive dialog with dynamic price calculation in CompanyManagement page
+    - Slot type selection (admin/member)
+    - Quantity input with real-time price calculation
+    - Total amount display
+  - **Backend API**: Implemented `/api/purchase-slots` endpoint with:
+    - Slot pricing lookup and validation
+    - Payment record creation with transaction ID
+    - Real-time slot allocation via `incrementCompanySlots()` method
+    - Automatic cache invalidation for immediate UI updates
+  - **Super Admin View**: Enhanced payment history to display slot type and quantity for each purchase
+- ✅ **Architect Review**: All changes passed review with no blocking issues or security concerns
