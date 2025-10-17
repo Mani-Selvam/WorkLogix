@@ -281,32 +281,56 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {allCompanies.slice(0, 5).map((comp) => (
-                <div key={comp.id} className="flex items-center justify-between p-3 border rounded-lg gap-3" data-testid={`company-${comp.id}`}>
-                  <div className="flex-1">
-                    <p className="font-medium">{comp.name}</p>
-                    <p className="text-sm text-muted-foreground">{comp.serverId}</p>
+              {allCompanies.slice(0, 5).map((comp) => {
+                const companyPayments = allPayments?.filter(p => p.companyId === comp.id && p.paymentStatus === 'paid') || [];
+                const adminSlotsPurchased = companyPayments
+                  .filter(p => p.slotType === 'admin')
+                  .reduce((sum, p) => sum + (p.slotQuantity || 0), 0);
+                const memberSlotsPurchased = companyPayments
+                  .filter(p => p.slotType === 'member')
+                  .reduce((sum, p) => sum + (p.slotQuantity || 0), 0);
+                const totalPaid = companyPayments.reduce((sum, p) => sum + p.amount, 0);
+                const lastPurchaseDate = companyPayments.length > 0 
+                  ? new Date(Math.max(...companyPayments.map(p => new Date(p.createdAt).getTime())))
+                  : null;
+
+                return (
+                  <div key={comp.id} className="flex items-center justify-between p-3 border rounded-lg gap-3" data-testid={`company-${comp.id}`}>
+                    <div className="flex-1">
+                      <p className="font-medium">{comp.name}</p>
+                      <p className="text-sm text-muted-foreground">{comp.serverId}</p>
+                      {companyPayments.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Purchased: {adminSlotsPurchased} admin, {memberSlotsPurchased} member slots
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Total Paid: ${totalPaid} | Last: {lastPurchaseDate?.toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">
+                        <span className="font-medium">{comp.maxAdmins + comp.maxMembers}</span> slots
+                      </p>
+                      <p className={`text-xs ${comp.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                        {comp.isActive ? 'Active' : 'Inactive'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteCompany(comp)}
+                      disabled={deleteCompanyMutation.isPending}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                      data-testid={`button-delete-company-${comp.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm">
-                      <span className="font-medium">{comp.maxAdmins + comp.maxMembers}</span> slots
-                    </p>
-                    <p className={`text-xs ${comp.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                      {comp.isActive ? 'Active' : 'Inactive'}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteCompany(comp)}
-                    disabled={deleteCompanyMutation.isPending}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                    data-testid={`button-delete-company-${comp.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
               {allCompanies.length > 5 && (
                 <Button
                   variant="outline"
