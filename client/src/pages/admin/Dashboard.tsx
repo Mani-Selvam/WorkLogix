@@ -369,59 +369,63 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Metrics */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Total Users"
-          value={stats?.totalUsers || 0}
-          icon={Users}
-          trend="+12%"
-          data-testid="metric-total-users"
-        />
-        <MetricCard
-          title="Today's Reports"
-          value={stats?.todayReports || 0}
-          icon={FileText}
-          trend="+8%"
-          data-testid="metric-today-reports"
-        />
-        <MetricCard
-          title="Pending Tasks"
-          value={stats?.pendingTasks || 0}
-          icon={FolderOpen}
-          trend="-3%"
-          data-testid="metric-pending-tasks"
-        />
-        <MetricCard
-          title="Completed Tasks"
-          value={stats?.completedTasks || 0}
-          icon={CheckCircle}
-          trend="+15%"
-          data-testid="metric-completed-tasks"
-        />
-      </div>
+      {/* Metrics - Company Admin Only */}
+      {!isSuperAdmin && (
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Total Users"
+            value={stats?.totalUsers || 0}
+            icon={Users}
+            trend="+12%"
+            data-testid="metric-total-users"
+          />
+          <MetricCard
+            title="Today's Reports"
+            value={stats?.todayReports || 0}
+            icon={FileText}
+            trend="+8%"
+            data-testid="metric-today-reports"
+          />
+          <MetricCard
+            title="Pending Tasks"
+            value={stats?.pendingTasks || 0}
+            icon={FolderOpen}
+            trend="-3%"
+            data-testid="metric-pending-tasks"
+          />
+          <MetricCard
+            title="Completed Tasks"
+            value={stats?.completedTasks || 0}
+            icon={CheckCircle}
+            trend="+15%"
+            data-testid="metric-completed-tasks"
+          />
+        </div>
+      )}
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-            {quickActions.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                className="justify-start gap-3 h-auto py-3 sm:py-4"
-                onClick={action.onClick}
-              >
-                <action.icon className="h-5 w-5" />
-                <span className="text-sm sm:text-base">{action.label}</span>
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions - Company Admin Only */}
+      {!isSuperAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+              {quickActions.map((action, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="justify-start gap-3 h-auto py-3 sm:py-4"
+                  onClick={action.onClick}
+                >
+                  <action.icon className="h-5 w-5" />
+                  <span className="text-sm sm:text-base">{action.label}</span>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Delete Company Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
