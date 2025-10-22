@@ -24,8 +24,11 @@ import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
 import AdminFeedback from "@/pages/admin/AdminFeedback";
 import CompanyManagement from "@/pages/admin/CompanyManagement";
+import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
+import PaymentTracking from "@/pages/super-admin/PaymentTracking";
+import ActivityLogs from "@/pages/super-admin/ActivityLogs";
 
-function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: "admin" | "user" }) {
+function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: "admin" | "user" | "super_admin" }) {
   const { user, loading, userRole } = useAuth();
 
   if (loading) {
@@ -43,14 +46,25 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any;
     return <Redirect to="/" />;
   }
 
-  const isAdmin = userRole === "super_admin" || userRole === "company_admin";
+  const isSuperAdmin = userRole === "super_admin";
+  const isCompanyAdmin = userRole === "company_admin";
   const isUser = userRole === "company_member";
 
-  if (allowedRole === "admin" && !isAdmin) {
+  if (allowedRole === "super_admin" && !isSuperAdmin) {
+    if (isCompanyAdmin) {
+      return <Redirect to="/admin" />;
+    }
+    return <Redirect to="/user" />;
+  }
+
+  if (allowedRole === "admin" && !isCompanyAdmin && !isSuperAdmin) {
     return <Redirect to="/user" />;
   }
 
   if (allowedRole === "user" && !isUser) {
+    if (isSuperAdmin) {
+      return <Redirect to="/super-admin" />;
+    }
     return <Redirect to="/admin" />;
   }
 
@@ -115,6 +129,18 @@ function Router() {
       </Route>
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
+      </Route>
+      <Route path="/super-admin/dashboard">
+        {() => <ProtectedRoute component={() => <AdminLayout><SuperAdminDashboard /></AdminLayout>} allowedRole="super_admin" />}
+      </Route>
+      <Route path="/super-admin/payments">
+        {() => <ProtectedRoute component={() => <AdminLayout><PaymentTracking /></AdminLayout>} allowedRole="super_admin" />}
+      </Route>
+      <Route path="/super-admin/activity">
+        {() => <ProtectedRoute component={() => <AdminLayout><ActivityLogs /></AdminLayout>} allowedRole="super_admin" />}
+      </Route>
+      <Route path="/super-admin">
+        <Redirect to="/super-admin/dashboard" />
       </Route>
       <Route>
         <div className="min-h-screen flex items-center justify-center bg-background">

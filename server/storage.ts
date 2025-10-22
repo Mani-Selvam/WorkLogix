@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens, adminActivityLogs,
   type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
@@ -14,7 +14,8 @@ import {
   type Feedback, type InsertFeedback,
   type SlotPricing, type InsertSlotPricing,
   type CompanyPayment, type InsertCompanyPayment,
-  type PasswordResetToken
+  type PasswordResetToken,
+  type AdminActivityLog, type InsertAdminActivityLog
 } from "@shared/schema";
 import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 
@@ -139,6 +140,50 @@ export interface IStorage {
     completedTasks: number;
     totalFiles: number;
   }>;
+  
+  // Admin activity log operations
+  createAdminActivityLog(log: InsertAdminActivityLog): Promise<AdminActivityLog>;
+  getAllAdminActivityLogs(limit?: number): Promise<AdminActivityLog[]>;
+  getAdminActivityLogsByCompany(companyId: number): Promise<AdminActivityLog[]>;
+  getAdminActivityLogsByUser(userId: number): Promise<AdminActivityLog[]>;
+  
+  // Super Admin analytics
+  getSuperAdminAnalytics(): Promise<{
+    totalCompanies: number;
+    activeCompanies: number;
+    suspendedCompanies: number;
+    totalUsers: number;
+    totalAdmins: number;
+    totalMembers: number;
+    totalTasks: number;
+    totalPayments: number;
+    totalRevenue: number;
+    recentPayments: CompanyPayment[];
+  }>;
+  
+  getCompanyWithStats(companyId: number): Promise<{
+    company: Company;
+    userCount: number;
+    adminCount: number;
+    memberCount: number;
+    taskCount: number;
+    totalPayments: number;
+    totalRevenue: number;
+  } | null>;
+  
+  getAllCompaniesWithStats(): Promise<Array<{
+    company: Company;
+    userCount: number;
+    adminCount: number;
+    memberCount: number;
+  }>>;
+  
+  suspendCompany(companyId: number, performedBy: number): Promise<void>;
+  reactivateCompany(companyId: number, performedBy: number): Promise<void>;
+  
+  // Enhanced payment tracking
+  getPaymentsByDateRange(startDate: Date, endDate: Date): Promise<CompanyPayment[]>;
+  getPaymentsByStatus(status: string): Promise<CompanyPayment[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -785,6 +830,173 @@ export class DbStorage implements IStorage {
       completedTasks: Number(completedTaskCount.count),
       totalFiles: Number(fileCount.count),
     };
+  }
+
+  async createAdminActivityLog(log: InsertAdminActivityLog): Promise<AdminActivityLog> {
+    const result = await db.insert(adminActivityLogs).values(log).returning();
+    return result[0];
+  }
+
+  async getAllAdminActivityLogs(limit?: number): Promise<AdminActivityLog[]> {
+    const query = db.select().from(adminActivityLogs).orderBy(desc(adminActivityLogs.createdAt));
+    if (limit) {
+      return await query.limit(limit);
+    }
+    return await query;
+  }
+
+  async getAdminActivityLogsByCompany(companyId: number): Promise<AdminActivityLog[]> {
+    return await db.select().from(adminActivityLogs)
+      .where(eq(adminActivityLogs.targetCompanyId, companyId))
+      .orderBy(desc(adminActivityLogs.createdAt));
+  }
+
+  async getAdminActivityLogsByUser(userId: number): Promise<AdminActivityLog[]> {
+    return await db.select().from(adminActivityLogs)
+      .where(or(
+        eq(adminActivityLogs.performedBy, userId),
+        eq(adminActivityLogs.targetUserId, userId)
+      ))
+      .orderBy(desc(adminActivityLogs.createdAt));
+  }
+
+  async getSuperAdminAnalytics(): Promise<{
+    totalCompanies: number;
+    activeCompanies: number;
+    suspendedCompanies: number;
+    totalUsers: number;
+    totalAdmins: number;
+    totalMembers: number;
+    totalTasks: number;
+    totalPayments: number;
+    totalRevenue: number;
+    recentPayments: CompanyPayment[];
+  }> {
+    const [totalCompaniesResult] = await db.select({ count: sql<number>`count(*)` }).from(companies);
+    const [activeCompaniesResult] = await db.select({ count: sql<number>`count(*)` }).from(companies).where(eq(companies.isActive, true));
+    const [suspendedCompaniesResult] = await db.select({ count: sql<number>`count(*)` }).from(companies).where(eq(companies.isActive, false));
+    const [totalUsersResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.isActive, true));
+    const [totalAdminsResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.isActive, true), eq(users.role, 'company_admin')));
+    const [totalMembersResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.isActive, true), eq(users.role, 'company_member')));
+    const [totalTasksResult] = await db.select({ count: sql<number>`count(*)` }).from(tasks);
+    const [totalPaymentsResult] = await db.select({ count: sql<number>`count(*)` }).from(companyPayments);
+    const [totalRevenueResult] = await db.select({ total: sql<number>`COALESCE(SUM(amount), 0)` }).from(companyPayments).where(eq(companyPayments.paymentStatus, 'paid'));
+    
+    const recentPayments = await db.select().from(companyPayments)
+      .orderBy(desc(companyPayments.createdAt))
+      .limit(10);
+
+    return {
+      totalCompanies: Number(totalCompaniesResult.count),
+      activeCompanies: Number(activeCompaniesResult.count),
+      suspendedCompanies: Number(suspendedCompaniesResult.count),
+      totalUsers: Number(totalUsersResult.count),
+      totalAdmins: Number(totalAdminsResult.count),
+      totalMembers: Number(totalMembersResult.count),
+      totalTasks: Number(totalTasksResult.count),
+      totalPayments: Number(totalPaymentsResult.count),
+      totalRevenue: Number(totalRevenueResult.total),
+      recentPayments,
+    };
+  }
+
+  async getCompanyWithStats(companyId: number): Promise<{
+    company: Company;
+    userCount: number;
+    adminCount: number;
+    memberCount: number;
+    taskCount: number;
+    totalPayments: number;
+    totalRevenue: number;
+  } | null> {
+    const company = await this.getCompanyById(companyId);
+    if (!company) {
+      return null;
+    }
+
+    const [userCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, companyId), eq(users.isActive, true)));
+    const [adminCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, companyId), eq(users.isActive, true), eq(users.role, 'company_admin')));
+    const [memberCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, companyId), eq(users.isActive, true), eq(users.role, 'company_member')));
+    const [taskCountResult] = await db.select({ count: sql<number>`count(*)` }).from(tasks).where(eq(tasks.companyId, companyId));
+    const [paymentCountResult] = await db.select({ count: sql<number>`count(*)` }).from(companyPayments).where(eq(companyPayments.companyId, companyId));
+    const [revenueResult] = await db.select({ total: sql<number>`COALESCE(SUM(amount), 0)` }).from(companyPayments).where(and(eq(companyPayments.companyId, companyId), eq(companyPayments.paymentStatus, 'paid')));
+
+    return {
+      company,
+      userCount: Number(userCountResult.count),
+      adminCount: Number(adminCountResult.count),
+      memberCount: Number(memberCountResult.count),
+      taskCount: Number(taskCountResult.count),
+      totalPayments: Number(paymentCountResult.count),
+      totalRevenue: Number(revenueResult.total),
+    };
+  }
+
+  async getAllCompaniesWithStats(): Promise<Array<{
+    company: Company;
+    userCount: number;
+    adminCount: number;
+    memberCount: number;
+  }>> {
+    const allCompanies = await db.select().from(companies).orderBy(desc(companies.createdAt));
+    
+    const companiesWithStats = await Promise.all(
+      allCompanies.map(async (company) => {
+        const [userCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, company.id), eq(users.isActive, true)));
+        const [adminCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, company.id), eq(users.isActive, true), eq(users.role, 'company_admin')));
+        const [memberCountResult] = await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, company.id), eq(users.isActive, true), eq(users.role, 'company_member')));
+
+        return {
+          company,
+          userCount: Number(userCountResult.count),
+          adminCount: Number(adminCountResult.count),
+          memberCount: Number(memberCountResult.count),
+        };
+      })
+    );
+
+    return companiesWithStats;
+  }
+
+  async suspendCompany(companyId: number, performedBy: number): Promise<void> {
+    await db.update(companies)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(companies.id, companyId));
+    
+    await this.createAdminActivityLog({
+      actionType: 'suspend_company',
+      performedBy,
+      targetCompanyId: companyId,
+      details: 'Company suspended by Super Admin',
+    });
+  }
+
+  async reactivateCompany(companyId: number, performedBy: number): Promise<void> {
+    await db.update(companies)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(companies.id, companyId));
+    
+    await this.createAdminActivityLog({
+      actionType: 'reactivate_company',
+      performedBy,
+      targetCompanyId: companyId,
+      details: 'Company reactivated by Super Admin',
+    });
+  }
+
+  async getPaymentsByDateRange(startDate: Date, endDate: Date): Promise<CompanyPayment[]> {
+    return await db.select().from(companyPayments)
+      .where(and(
+        gte(companyPayments.createdAt, startDate),
+        lte(companyPayments.createdAt, endDate)
+      ))
+      .orderBy(desc(companyPayments.createdAt));
+  }
+
+  async getPaymentsByStatus(status: string): Promise<CompanyPayment[]> {
+    return await db.select().from(companyPayments)
+      .where(eq(companyPayments.paymentStatus, status))
+      .orderBy(desc(companyPayments.createdAt));
   }
 }
 

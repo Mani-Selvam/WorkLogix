@@ -593,7 +593,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteCompany(parseInt(req.params.id));
+      
+      await storage.createAdminActivityLog({
+        actionType: 'delete_company',
+        performedBy: requestingUser.id,
+        targetCompanyId: parseInt(req.params.id),
+        details: `Company ${req.params.id} deleted`,
+      });
+      
       res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Super Admin Dashboard Routes
+  app.get("/api/super-admin/companies-with-stats", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const companiesWithStats = await storage.getAllCompaniesWithStats();
+      res.json(companiesWithStats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/super-admin/companies/:id/stats", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const companyStats = await storage.getCompanyWithStats(parseInt(req.params.id));
+      if (!companyStats) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(companyStats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/super-admin/companies/:id/suspend", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.suspendCompany(parseInt(req.params.id), requestingUser.id);
+      res.json({ message: "Company suspended successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/super-admin/companies/:id/reactivate", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.reactivateCompany(parseInt(req.params.id), requestingUser.id);
+      res.json({ message: "Company reactivated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/super-admin/analytics", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const analytics = await storage.getSuperAdminAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/super-admin/activity-logs", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const logs = await storage.getAllAdminActivityLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/super-admin/activity-logs/company/:companyId", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getAdminActivityLogsByCompany(parseInt(req.params.companyId));
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/super-admin/payments", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { startDate, endDate, status } = req.query;
+      
+      let payments;
+      if (startDate && endDate) {
+        payments = await storage.getPaymentsByDateRange(
+          new Date(startDate as string),
+          new Date(endDate as string)
+        );
+      } else if (status) {
+        payments = await storage.getPaymentsByStatus(status as string);
+      } else {
+        payments = await storage.getAllCompanyPayments();
+      }
+      
+      res.json(payments);
     } catch (error) {
       next(error);
     }

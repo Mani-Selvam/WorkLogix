@@ -13,7 +13,10 @@ import {
   MessageCircle,
   LogOut,
   Menu,
-  Building2
+  Building2,
+  BarChart3,
+  DollarSign,
+  Activity
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import BottomNav, { BottomNavItem } from "./BottomNav";
@@ -36,6 +39,12 @@ const navItems: NavItem[] = [
   { path: "/admin/feedback", label: "Feedback", icon: MessageCircle },
 ];
 
+const superAdminNavItems: NavItem[] = [
+  { path: "/super-admin/dashboard", label: "Companies", icon: Building2 },
+  { path: "/super-admin/payments", label: "Payments", icon: DollarSign },
+  { path: "/super-admin/activity", label: "Activity Logs", icon: Activity },
+];
+
 const bottomNavItems: BottomNavItem[] = [
   { path: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
   { path: "/admin/users", label: "Users", icon: Users },
@@ -44,21 +53,21 @@ const bottomNavItems: BottomNavItem[] = [
   { path: "/admin/reports", label: "Reports", icon: FileText },
 ];
 
+const superAdminBottomNavItems: BottomNavItem[] = [
+  { path: "/super-admin/dashboard", label: "Companies", icon: Building2 },
+  { path: "/super-admin/payments", label: "Payments", icon: DollarSign },
+  { path: "/super-admin/activity", label: "Activity", icon: Activity },
+];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, userRole, signOut, loggingOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isSuperAdmin = userRole === 'super_admin';
-  const sectionsToHideFromSuperAdmin = ['/admin/reports', '/admin/tasks', '/admin/messages', '/admin/ratings', '/admin/feedback'];
   
-  const filteredNavItems = isSuperAdmin 
-    ? navItems.filter(item => !sectionsToHideFromSuperAdmin.includes(item.path))
-    : navItems;
-  
-  const filteredBottomNavItems = isSuperAdmin
-    ? bottomNavItems.filter(item => !sectionsToHideFromSuperAdmin.includes(item.path))
-    : bottomNavItems;
+  const filteredNavItems = isSuperAdmin ? superAdminNavItems : navItems;
+  const filteredBottomNavItems = isSuperAdmin ? superAdminBottomNavItems : bottomNavItems;
 
   const handleLogout = async () => {
     await signOut();

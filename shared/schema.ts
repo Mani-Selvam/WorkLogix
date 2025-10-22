@@ -159,6 +159,16 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const adminActivityLogs = pgTable("admin_activity_logs", {
+  id: serial("id").primaryKey(),
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  performedBy: integer("performed_by").references(() => users.id).notNull(),
+  targetCompanyId: integer("target_company_id").references(() => companies.id),
+  targetUserId: integer("target_user_id").references(() => users.id),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
   serverId: true,
@@ -330,3 +340,11 @@ export type InsertCompanyPayment = z.infer<typeof insertCompanyPaymentSchema>;
 export type CompanyPayment = typeof companyPayments.$inferSelect;
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export const insertAdminActivityLogSchema = createInsertSchema(adminActivityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema>;
+export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;
