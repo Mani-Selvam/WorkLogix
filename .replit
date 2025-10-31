@@ -15,10 +15,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 34191
-externalPort = 3002
-
-[[ports]]
 localPort = 34849
 externalPort = 3000
 
@@ -45,6 +41,10 @@ externalPort = 8000
 [[ports]]
 localPort = 38597
 externalPort = 8008
+
+[[ports]]
+localPort = 39543
+externalPort = 3002
 
 [[ports]]
 localPort = 39559
@@ -97,6 +97,9 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 integrations = ["javascript_database:1.0.0", "firebase_barebones_javascript:1.0.0", "resend:1.0.0"]
