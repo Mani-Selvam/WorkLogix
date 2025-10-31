@@ -85,8 +85,8 @@ export default function CompanyManagement() {
       setConfirmDialogOpen(false);
       console.log("Payment status set to processing, clientSecret:", data.clientSecret ? "exists" : "missing");
       toast({
-        title: "Redirecting to payment gateway...",
-        description: "Please complete your payment",
+        title: "Payment form ready",
+        description: "Please enter your card details to complete the purchase",
       });
     },
     onError: (error: any) => {
