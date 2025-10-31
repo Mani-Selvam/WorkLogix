@@ -75,7 +75,8 @@ export default function CompanyManagement() {
   const createPaymentIntentMutation = useMutation({
     mutationFn: async (data: { slotType: 'admin' | 'member'; quantity: number }) => {
       setPaymentStatus('creating');
-      return await apiRequest('POST', '/api/create-payment-intent', data);
+      const response = await apiRequest('POST', '/api/create-payment-intent', data);
+      return await response.json();
     },
     onSuccess: (data: any) => {
       console.log("Payment intent created:", data);
@@ -101,7 +102,8 @@ export default function CompanyManagement() {
 
   const verifyPaymentMutation = useMutation({
     mutationFn: async (paymentIntentId: string) => {
-      return await apiRequest('POST', '/api/verify-payment', { paymentIntentId, paymentId });
+      const response = await apiRequest('POST', '/api/verify-payment', { paymentIntentId, paymentId });
+      return await response.json();
     },
     onSuccess: (data: any) => {
       setPaymentStatus('success');
