@@ -414,7 +414,7 @@ export default function CompanyManagement() {
 
       {/* Slot Purchase Dialog */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
-        <DialogContent data-testid="dialog-purchase-slots" className="max-w-md">
+        <DialogContent data-testid="dialog-purchase-slots" className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
@@ -424,7 +424,7 @@ export default function CompanyManagement() {
               Buy additional slots for your company
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* Pricing Info */}
             {slotPricing && slotPricing.length > 0 && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
