@@ -26,7 +26,7 @@ interface CompanyData {
   isActive: boolean;
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 export default function CompanyManagement() {
   const { dbUserId, userRole } = useAuth();
