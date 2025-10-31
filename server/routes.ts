@@ -1700,13 +1700,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
+      console.log("Payment Intent created:", {
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        hasClientSecret: !!paymentIntent.client_secret,
+        clientSecretPreview: paymentIntent.client_secret ? paymentIntent.client_secret.substring(0, 30) + "..." : "MISSING"
+      });
+
       // Update payment with Stripe payment intent ID
       await storage.updatePaymentStripeId(payment.id, paymentIntent.id);
 
-      res.json({ 
+      const responseData = { 
         clientSecret: paymentIntent.client_secret,
         paymentId: payment.id,
+      };
+      
+      console.log("Sending response:", {
+        hasClientSecret: !!responseData.clientSecret,
+        paymentId: responseData.paymentId
       });
+
+      res.json(responseData);
     } catch (error: any) {
       console.error("Payment intent creation error:", error);
       if (error instanceof z.ZodError) {
