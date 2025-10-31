@@ -99,12 +99,17 @@ export default function CompanyManagement() {
     mutationFn: async (paymentIntentId: string) => {
       return await apiRequest('POST', '/api/verify-payment', { paymentIntentId, paymentId });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setPaymentStatus('success');
       queryClient.invalidateQueries({ queryKey: ['/api/my-company'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-company-payments'] });
+      
+      const emailStatus = data.emailSent ? "✅ Receipt emailed to your company email" : "⚠️ Email sending in progress";
+      
       toast({
         title: "🎉 Payment Successful!",
-        description: "Slots have been added to your account",
+        description: `Receipt: ${data.receiptNumber}. ${emailStatus}. Slots have been added to your account.`,
+        duration: 5000,
       });
       setTimeout(() => {
         setPurchaseDialogOpen(false);

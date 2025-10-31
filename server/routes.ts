@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail } from "./email";
+import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail } from "./email";
 import crypto from "crypto";
 import Stripe from "stripe";
 
@@ -1745,29 +1745,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Prevent duplicate processing
       if (payment.paymentStatus === 'paid') {
-        return res.status(400).json({ message: "Payment already processed" });
+        // Payment already processed - return success with existing receipt
+        return res.json({ 
+          success: true, 
+          message: "Payment already processed",
+          payment,
+          receiptNumber: payment.receiptNumber,
+          emailSent: payment.emailSent,
+        });
       }
 
-      // Update payment status
-      await storage.updatePaymentStatus(paymentId, {
-        paymentStatus: 'paid',
-        transactionId: paymentIntent.id,
-      });
+      // Get company details for email
+      const company = await storage.getCompanyById(payment.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
 
-      // Update company slots
-      const updateData = payment.slotType === 'admin'
+      // Generate unique receipt number using payment ID for guaranteed uniqueness
+      const date = new Date();
+      const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+      const receiptNumber = `WL-RCPT-${dateStr}-${paymentId.toString().padStart(6, '0')}`;
+
+      // Prepare slot updates
+      const slotUpdates = payment.slotType === 'admin'
         ? { maxAdmins: payment.slotQuantity || 0 }
         : { maxMembers: payment.slotQuantity || 0 };
 
-      await storage.incrementCompanySlots(payment.companyId, updateData);
+      // CRITICAL: Atomic transaction - complete payment and update slots together
+      const updatedPayment = await storage.completePaymentWithSlots(
+        paymentId,
+        payment.companyId,
+        receiptNumber,
+        paymentIntent.id,
+        slotUpdates
+      );
+
+      // If null, payment was already processed by concurrent request - fetch current state
+      if (!updatedPayment) {
+        const currentPayment = await storage.getPaymentById(paymentId);
+        if (!currentPayment) {
+          return res.status(404).json({ message: "Payment record not found" });
+        }
+        // Return existing receipt data (idempotent retry succeeded)
+        return res.json({ 
+          success: true, 
+          message: "Payment already processed",
+          payment: currentPayment,
+          receiptNumber: currentPayment.receiptNumber,
+          emailSent: currentPayment.emailSent,
+        });
+      }
+
+      // Send email asynchronously (non-fatal - don't block on email failure)
+      let emailSent = false;
+      try {
+        emailSent = await sendPaymentConfirmationEmail({
+          companyName: company.name,
+          companyEmail: company.email,
+          receiptNumber,
+          amount: payment.amount,
+          currency: payment.currency,
+          slotType: payment.slotType || 'member',
+          slotQuantity: payment.slotQuantity || 1,
+          transactionId: paymentIntent.id,
+          paymentDate: date,
+        });
+
+        // Update email sent status if successful
+        if (emailSent) {
+          await storage.updatePaymentEmailStatus(paymentId, true);
+        }
+      } catch (emailError: any) {
+        console.error("Email sending failed (non-fatal):", emailError);
+        // Email failure is logged but doesn't fail the payment
+      }
 
       res.json({ 
         success: true, 
         message: "Payment verified and slots added successfully",
-        payment,
+        payment: updatedPayment,
+        receiptNumber,
+        emailSent,
       });
     } catch (error: any) {
       console.error("Payment verification error:", error);
+      next(error);
+    }
+  });
+
+  // Get company's own payment history (Company Admin)
+  app.get("/api/my-company-payments", async (req, res, next) => {
+    try {
+      const requestingUserId = req.headers['x-user-id'];
+      if (!requestingUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(403).json({ message: "User must belong to a company" });
+      }
+
+      if (requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Only company admins can view payment history" });
+      }
+
+      const payments = await storage.getPaymentsByCompanyId(requestingUser.companyId);
+      res.json(payments);
+    } catch (error) {
       next(error);
     }
   });

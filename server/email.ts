@@ -176,6 +176,104 @@ export async function sendPasswordResetEmail(data: {
   }
 }
 
+export async function sendPaymentConfirmationEmail(paymentData: {
+  companyName: string;
+  companyEmail: string;
+  receiptNumber: string;
+  amount: number;
+  currency: string;
+  slotType: string;
+  slotQuantity: number;
+  transactionId: string;
+  paymentDate: Date;
+}) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    const currencySymbol = paymentData.currency === 'INR' ? '₹' : '$';
+    const slotTypeLabel = paymentData.slotType === 'admin' ? 'Admin' : 'Member';
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background-color: #4CAF50; color: white; width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 30px;">
+              ✓
+            </div>
+            <h1 style="color: #333; margin: 15px 0 5px 0;">Payment Successful!</h1>
+            <p style="color: #666; margin: 0;">Thank you for your purchase</p>
+          </div>
+          
+          <div style="background-color: #f5f5f5; border-left: 4px solid #4CAF50; padding: 20px; margin: 25px 0; border-radius: 4px;">
+            <h2 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">Payment Details</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666; width: 40%;">Receipt Number:</td>
+                <td style="padding: 8px 0; color: #333; font-weight: bold;">${paymentData.receiptNumber}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Company:</td>
+                <td style="padding: 8px 0; color: #333; font-weight: bold;">${paymentData.companyName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Date:</td>
+                <td style="padding: 8px 0; color: #333;">${paymentData.paymentDate.toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Transaction ID:</td>
+                <td style="padding: 8px 0; color: #333; font-size: 12px; word-break: break-all;">${paymentData.transactionId}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; margin: 25px 0; border-radius: 4px;">
+            <h2 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">Order Summary</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Item:</td>
+                <td style="padding: 8px 0; color: #333; text-align: right;">${slotTypeLabel} Slots (${paymentData.slotQuantity})</td>
+              </tr>
+              <tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 12px 0; color: #333; font-weight: bold; font-size: 16px;">Total Amount:</td>
+                <td style="padding: 12px 0; color: #4CAF50; font-weight: bold; font-size: 18px; text-align: right;">${currencySymbol}${paymentData.amount.toLocaleString()}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="background-color: #E8F5E9; border: 1px solid #4CAF50; border-radius: 4px; padding: 15px; margin: 25px 0;">
+            <p style="margin: 0; color: #2E7D32; font-size: 14px;">
+              ✓ Your ${slotTypeLabel.toLowerCase()} slots have been added to your company account and are ready to use.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px; margin: 5px 0;">Questions about your payment?</p>
+            <p style="color: #666; font-size: 14px; margin: 5px 0;">Contact us at support@worklogix.com</p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 25px;">
+            <p style="color: #999; font-size: 12px; margin: 5px 0;">This is an automated email. Please do not reply.</p>
+            <p style="color: #999; font-size: 12px; margin: 5px 0;">© ${new Date().getFullYear()} WorkLogix. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: paymentData.companyEmail,
+      subject: `Payment Receipt - ${paymentData.receiptNumber} | WorkLogix`,
+      html: htmlContent,
+    });
+
+    console.log(`Payment confirmation email sent to ${paymentData.companyEmail} with receipt ${paymentData.receiptNumber}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending payment confirmation email:', error);
+    return false;
+  }
+}
+
 export async function sendReportNotification(reportData: {
   userName: string;
   reportType: string;

@@ -24,6 +24,7 @@ import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
 import AdminFeedback from "@/pages/admin/AdminFeedback";
 import CompanyManagement from "@/pages/admin/CompanyManagement";
+import PaymentHistory from "@/pages/admin/PaymentHistory";
 import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
 import PaymentTracking from "@/pages/super-admin/PaymentTracking";
 import ActivityLogs from "@/pages/super-admin/ActivityLogs";
@@ -126,6 +127,9 @@ function Router() {
       </Route>
       <Route path="/admin/company">
         {() => <ProtectedRoute component={() => <AdminLayout><CompanyManagement /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/payment-history">
+        {() => <ProtectedRoute component={() => <AdminLayout><PaymentHistory /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />

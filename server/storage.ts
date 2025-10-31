@@ -126,6 +126,8 @@ export interface IStorage {
   getPaymentById(id: number): Promise<CompanyPayment | null>;
   updatePaymentStatus(id: number, updates: { paymentStatus: string; transactionId?: string }): Promise<void>;
   updatePaymentStripeId(id: number, stripePaymentIntentId: string): Promise<void>;
+  completePaymentWithSlots(paymentId: number, companyId: number, receiptNumber: string, transactionId: string, slotUpdates: { maxAdmins?: number; maxMembers?: number }): Promise<CompanyPayment | null>;
+  updatePaymentEmailStatus(id: number, emailSent: boolean): Promise<void>;
   
   // Password reset operations
   createPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
@@ -753,6 +755,55 @@ export class DbStorage implements IStorage {
   async updatePaymentStripeId(id: number, stripePaymentIntentId: string): Promise<void> {
     await db.update(companyPayments)
       .set({ stripePaymentIntentId })
+      .where(eq(companyPayments.id, id));
+  }
+
+  async completePaymentWithSlots(
+    paymentId: number, 
+    companyId: number, 
+    receiptNumber: string, 
+    transactionId: string,
+    slotUpdates: { maxAdmins?: number; maxMembers?: number }
+  ): Promise<CompanyPayment | null> {
+    return await db.transaction(async (tx) => {
+      // Step 1: Mark payment as paid ONLY if still pending (gate check first!)
+      const result = await tx.update(companyPayments)
+        .set({
+          paymentStatus: 'paid',
+          receiptNumber,
+          transactionId,
+          emailSent: false,
+        })
+        .where(and(
+          eq(companyPayments.id, paymentId),
+          eq(companyPayments.paymentStatus, 'pending')
+        ))
+        .returning();
+
+      // If payment already processed, return null immediately (don't touch slots)
+      if (result.length === 0) {
+        return null;
+      }
+
+      // Step 2: Increment company slots ONLY if payment update succeeded
+      if (slotUpdates.maxAdmins) {
+        await tx.update(companies)
+          .set({ maxAdmins: sql`${companies.maxAdmins} + ${slotUpdates.maxAdmins}` })
+          .where(eq(companies.id, companyId));
+      }
+      if (slotUpdates.maxMembers) {
+        await tx.update(companies)
+          .set({ maxMembers: sql`${companies.maxMembers} + ${slotUpdates.maxMembers}` })
+          .where(eq(companies.id, companyId));
+      }
+
+      return result[0];
+    });
+  }
+
+  async updatePaymentEmailStatus(id: number, emailSent: boolean): Promise<void> {
+    await db.update(companyPayments)
+      .set({ emailSent })
       .where(eq(companyPayments.id, id));
   }
 
