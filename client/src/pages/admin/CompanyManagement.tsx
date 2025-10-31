@@ -26,7 +26,9 @@ interface CompanyData {
   isActive: boolean;
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+const publicKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
+console.log("Loading Stripe with key:", publicKey ? "Key exists" : "Missing key");
+const stripePromise = loadStripe(publicKey);
 
 export default function CompanyManagement() {
   const { dbUserId, userRole } = useAuth();
@@ -76,10 +78,12 @@ export default function CompanyManagement() {
       return await apiRequest('POST', '/api/create-payment-intent', data);
     },
     onSuccess: (data: any) => {
+      console.log("Payment intent created:", data);
       setClientSecret(data.clientSecret);
       setPaymentId(data.paymentId);
       setPaymentStatus('processing');
       setConfirmDialogOpen(false);
+      console.log("Payment status set to processing, clientSecret:", data.clientSecret ? "exists" : "missing");
       toast({
         title: "Redirecting to payment gateway...",
         description: "Please complete your payment",
@@ -501,14 +505,19 @@ export default function CompanyManagement() {
             )}
 
             {paymentStatus === 'processing' && clientSecret && (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <StripeCheckoutForm 
-                  onSuccess={handlePaymentSuccess}
-                  onFailure={handlePaymentFailure}
-                  amount={getTotalPrice()}
-                />
-              </Elements>
+              <div data-testid="stripe-payment-container">
+                {console.log("Rendering Stripe Elements with clientSecret:", clientSecret.substring(0, 20) + "...")}
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <StripeCheckoutForm 
+                    onSuccess={handlePaymentSuccess}
+                    onFailure={handlePaymentFailure}
+                    amount={getTotalPrice()}
+                  />
+                </Elements>
+              </div>
             )}
+            
+            {console.log("Payment status:", paymentStatus, "clientSecret exists:", !!clientSecret)}
 
             {paymentStatus === 'creating' && (
               <div className="flex items-center justify-center py-8">
