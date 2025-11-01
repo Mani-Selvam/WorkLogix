@@ -1828,10 +1828,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Create Stripe payment intent with server-calculated amount
+      // Automatic payment methods - Stripe will show available options based on:
+      // 1. Currency (INR)
+      // 2. Amount
+      // 3. Customer location
+      // 4. Payment methods enabled in your Stripe Dashboard
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(calculatedAmount * 100), // Convert to paise (INR smallest unit)
         currency: "inr",
-        payment_method_types: ['card'],
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'always',
+        },
         metadata: {
           paymentId: payment.id.toString(),
           companyId: requestingUser.companyId.toString(),
