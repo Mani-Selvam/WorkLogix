@@ -1,5 +1,26 @@
 # Payment Methods Configuration Guide
 
+## ⚠️ Important: Google Pay Limitation in India
+
+**Google Pay through Stripe is NOT available in India**. This is a hard restriction by Stripe that affects:
+- ❌ Indian Stripe accounts
+- ❌ Users with Indian IP addresses  
+- ❌ Payments in INR currency
+
+**Even if you enable Google Pay in your Stripe dashboard, it will not appear for Indian customers.**
+
+## ✅ Solution: UPI (Includes Google Pay + PhonePe + Paytm)
+
+Instead of Google Pay directly, you should use **UPI (Unified Payments Interface)** which includes:
+- Google Pay (via UPI)
+- PhonePe
+- Paytm
+- BHIM
+- All other UPI apps
+- QR Code payments
+
+# Payment Methods Configuration Guide
+
 ## What I've Implemented
 
 ### ✅ Security Features
@@ -26,18 +47,33 @@ Go to: https://dashboard.stripe.com/account/payments/settings
 
 ### 2. Enable Payment Methods for India (INR)
 
-#### Enable Google Pay
-1. Scroll to **Payment methods**
-2. Find **Google Pay**
-3. Click **Turn on** or **Enable**
-4. Follow the activation steps
+#### Enable UPI (Includes Google Pay, PhonePe, Paytm + QR Codes)
 
-#### Enable UPI (for QR Code and UPI payments)
-1. In Payment methods section
-2. Find **UPI** (United Payments Interface)
-3. Click **Request access** or **Enable**
-4. Complete the verification process
-5. **Note**: UPI requires business verification for Indian businesses
+**UPI is currently in PRIVATE BETA** - You need to request access:
+
+1. **Contact Stripe Support**:
+   - Go to: https://support.stripe.com
+   - Or visit: https://stripe.com/docs/payments/real-time
+   - Click "Contact us"
+
+2. **Request Access**:
+   - Subject: "Request access to UPI beta for India account"
+   - Explain: You want to accept UPI payments (Google Pay, PhonePe, Paytm) for your Indian customers
+
+3. **Once Approved**:
+   - Go to **Settings → Payment methods** in Stripe Dashboard
+   - Find **UPI** and enable it
+   - No code changes needed - it will automatically appear in the payment form!
+
+4. **What Customers Will See**:
+   - UPI payment option at checkout
+   - They can pay using Google Pay, PhonePe, Paytm, BHIM, or any UPI app
+   - QR code option for scanning with their UPI app
+
+#### ❌ Google Pay Direct (NOT Available)
+- Do NOT enable Google Pay in Stripe Dashboard
+- It will not work for Indian accounts or customers
+- Use UPI instead (which includes Google Pay via UPI)
 
 #### Enable Other Digital Wallets
 You can also enable:
