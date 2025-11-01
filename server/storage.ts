@@ -28,6 +28,7 @@ function generateUniqueId(prefix: string): string {
   return `${prefix}-${id}`;
 }
 
+
 export interface IStorage {
   // Company operations
   createCompany(company: InsertCompany): Promise<Company>;
@@ -190,9 +191,44 @@ export interface IStorage {
 
 export class DbStorage implements IStorage {
   async createCompany(company: InsertCompany): Promise<Company> {
-    const serverId = generateUniqueId('CMP');
-    const result = await db.insert(companies).values({ ...company, serverId }).returning();
-    return result[0];
+    const maxAttempts = 10;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        return await db.transaction(async (tx) => {
+          const latestCompany = await tx
+            .select({ serverId: companies.serverId })
+            .from(companies)
+            .orderBy(desc(companies.id))
+            .limit(1);
+          
+          let nextNumber = 10001;
+          
+          if (latestCompany.length > 0 && latestCompany[0].serverId) {
+            const match = latestCompany[0].serverId.match(/CMP-(\d+)/);
+            if (match) {
+              nextNumber = parseInt(match[1], 10) + 1;
+            }
+          }
+          
+          const serverId = `CMP-${(nextNumber + attempt).toString().padStart(5, '0')}`;
+          
+          const result = await tx
+            .insert(companies)
+            .values({ ...company, serverId })
+            .returning();
+          
+          return result[0];
+        });
+      } catch (error: any) {
+        if (error.code === '23505' && attempt < maxAttempts - 1) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    
+    throw new Error('Failed to generate unique company server ID after multiple attempts');
   }
 
   async getCompanyById(id: number): Promise<Company | null> {

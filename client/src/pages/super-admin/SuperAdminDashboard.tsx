@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Building2, Users, DollarSign, TrendingUp, Search, 
-  Ban, CheckCircle, MoreVertical, Eye, Trash2 
+  Ban, CheckCircle, MoreVertical, Eye, Trash2, Copy, Check 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,7 +51,26 @@ export default function SuperAdminDashboard() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "suspended">("all");
   const [selectedCompany, setSelectedCompany] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleCopyServerId = async (serverId: string) => {
+    try {
+      await navigator.clipboard.writeText(serverId);
+      setCopiedServerId(serverId);
+      toast({
+        title: "Copied!",
+        description: `Server ID ${serverId} copied to clipboard`,
+      });
+      setTimeout(() => setCopiedServerId(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: companiesWithStats = [], isLoading: loadingCompanies } = useQuery<CompanyWithStats[]>({
     queryKey: ['/api/super-admin/companies-with-stats'],
@@ -237,11 +256,26 @@ export default function SuperAdminDashboard() {
                     <div className="space-y-1 flex-1">
                       <CardTitle className="text-lg" data-testid={`text-company-name-${company.id}`}>{company.name}</CardTitle>
                       <CardDescription className="text-sm">{company.email}</CardDescription>
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-2 mt-2 flex-wrap items-center">
                         <Badge variant={company.isActive ? "default" : "destructive"} data-testid={`badge-status-${company.id}`}>
                           {company.isActive ? "Active" : "Suspended"}
                         </Badge>
-                        <Badge variant="outline" data-testid={`badge-server-id-${company.id}`}>{company.serverId}</Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" data-testid={`badge-server-id-${company.id}`}>{company.serverId}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleCopyServerId(company.serverId)}
+                            data-testid={`button-copy-server-id-${company.id}`}
+                          >
+                            {copiedServerId === company.serverId ? (
+                              <Check className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <DropdownMenu>

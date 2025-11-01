@@ -127,7 +127,7 @@ export default function Dashboard() {
       updatePricingMutation.mutate({
         slotType: editingPricing.slotType,
         pricePerSlot: parseInt(editingPricing.price),
-        currency: "USD",
+        currency: "INR",
       });
     }
   };
@@ -229,7 +229,7 @@ export default function Dashboard() {
                     {isEditing ? (
                       <div className="space-y-3">
                         <div>
-                          <Label>Price per Slot (USD)</Label>
+                          <Label>Price per Slot (INR)</Label>
                           <Input
                             type="number"
                             value={editingPricing.price}
@@ -258,7 +258,7 @@ export default function Dashboard() {
                       </div>
                     ) : (
                       <div className="text-2xl font-bold text-primary" data-testid={`text-${slotType}-price`}>
-                        ${pricing?.pricePerSlot || 0}
+                        ₹{pricing?.pricePerSlot || 0}
                         <span className="text-sm text-muted-foreground font-normal">/slot</span>
                       </div>
                     )}
@@ -305,7 +305,7 @@ export default function Dashboard() {
                             Purchased: {adminSlotsPurchased} admin, {memberSlotsPurchased} member slots
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Total Paid: ${totalPaid} | Last: {lastPurchaseDate?.toLocaleDateString()}
+                            Total Paid: ₹{totalPaid} | Last: {lastPurchaseDate?.toLocaleDateString()}
                           </p>
                         </div>
                       )}

@@ -43,12 +43,18 @@ export default function PaymentTracking() {
     queryParams.append("status", statusFilter);
   }
 
-  const { data: payments = [], isLoading } = useQuery<CompanyPayment[]>({
+  const { data: payments = [], isLoading, error } = useQuery<CompanyPayment[]>({
     queryKey: ['/api/super-admin/payments', queryParams.toString()],
-    queryFn: () => 
-      fetch(`/api/super-admin/payments?${queryParams}`, {
+    queryFn: async () => {
+      const res = await fetch(`/api/super-admin/payments?${queryParams}`, {
         headers: { 'x-user-id': localStorage.getItem('userId') || '' }
-      }).then(res => res.json()),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch payments');
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const getStatusBadge = (status: string) => {
@@ -62,6 +68,9 @@ export default function PaymentTracking() {
   };
 
   const exportToCSV = () => {
+    if (!payments || payments.length === 0) {
+      return;
+    }
     const headers = ["ID", "Company ID", "Amount", "Currency", "Status", "Payment Method", "Date"];
     const rows = payments.map(p => [
       p.id,
@@ -86,6 +95,18 @@ export default function PaymentTracking() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-destructive">Error loading payments. Please try again later.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
