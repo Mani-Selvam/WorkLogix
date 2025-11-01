@@ -508,18 +508,16 @@ export default function CompanyManagement() {
 
             {paymentStatus === 'processing' && clientSecret && (
               <div data-testid="stripe-payment-container">
-                {console.log("Rendering Stripe Elements with clientSecret:", clientSecret.substring(0, 20) + "...")}
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
                   <StripeCheckoutForm 
                     onSuccess={handlePaymentSuccess}
                     onFailure={handlePaymentFailure}
                     amount={getTotalPrice()}
+                    clientSecret={clientSecret}
                   />
                 </Elements>
               </div>
             )}
-            
-            {console.log("Payment status:", paymentStatus, "clientSecret exists:", !!clientSecret)}
 
             {paymentStatus === 'creating' && (
               <div className="flex items-center justify-center py-8">

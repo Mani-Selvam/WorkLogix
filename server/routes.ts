@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
@@ -12,7 +13,145 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Stripe Webhook Handler (MUST be before express.json() middleware)
+  // This endpoint needs raw body for signature verification
+  app.post("/api/stripe-webhook", express.raw({ type: 'application/json' }), async (req, res, next) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment gateway not configured" });
+      }
+
+      const sig = req.headers['stripe-signature'];
+      if (!sig) {
+        return res.status(400).send('No signature header');
+      }
+
+      let event: Stripe.Event;
+
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      } catch (err: any) {
+        console.error('Webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+
+      // Handle payment_intent.succeeded event
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        
+        console.log('Payment succeeded webhook received:', {
+          id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          metadata: paymentIntent.metadata,
+        });
+
+        const paymentId = parseInt(paymentIntent.metadata.paymentId || '0');
+        const companyId = parseInt(paymentIntent.metadata.companyId || '0');
+        const slotType = paymentIntent.metadata.slotType;
+        const quantity = parseInt(paymentIntent.metadata.quantity || '0');
+
+        if (!paymentId || !companyId) {
+          console.error('Invalid metadata in payment intent');
+          return res.status(400).json({ message: 'Invalid payment metadata' });
+        }
+
+        // Get payment record
+        const payment = await storage.getPaymentById(paymentId);
+        if (!payment) {
+          console.error('Payment not found:', paymentId);
+          return res.status(404).json({ message: 'Payment not found' });
+        }
+
+        // Prevent duplicate processing
+        if (payment.paymentStatus === 'paid') {
+          console.log('Payment already processed:', paymentId);
+          return res.json({ received: true, message: 'Already processed' });
+        }
+
+        // Get company details
+        const company = await storage.getCompanyById(companyId);
+        if (!company) {
+          console.error('Company not found:', companyId);
+          return res.status(404).json({ message: 'Company not found' });
+        }
+
+        // Generate unique receipt number
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        const receiptNumber = `WL-RCPT-${dateStr}-${paymentId.toString().padStart(6, '0')}`;
+
+        // Prepare slot updates
+        const slotUpdates = slotType === 'admin'
+          ? { maxAdmins: quantity }
+          : { maxMembers: quantity };
+
+        // CRITICAL: Atomic transaction - complete payment and update slots together
+        const updatedPayment = await storage.completePaymentWithSlots(
+          paymentId,
+          companyId,
+          receiptNumber,
+          paymentIntent.id,
+          slotUpdates
+        );
+
+        if (updatedPayment) {
+          console.log('Payment completed successfully:', {
+            paymentId,
+            receiptNumber,
+            slotType,
+            quantity,
+          });
+
+          // Send notifications to Super Admin and Company
+          try {
+            // Get super admin
+            const superAdmin = await storage.getUserByEmail('superadmin@worklogix.com');
+            
+            // Send email to company
+            await sendPaymentConfirmationEmail({
+              companyName: company.name,
+              companyEmail: company.email,
+              receiptNumber,
+              amount: payment.amount,
+              currency: payment.currency,
+              slotType: slotType || '',
+              slotQuantity: quantity,
+              transactionId: paymentIntent.id,
+              paymentDate: new Date(),
+            });
+
+            // Send notification to super admin
+            if (superAdmin) {
+              await sendPaymentConfirmationEmail({
+                companyName: `[ADMIN NOTIFICATION] ${company.name}`,
+                companyEmail: superAdmin.email,
+                receiptNumber,
+                amount: payment.amount,
+                currency: payment.currency,
+                slotType: slotType || '',
+                slotQuantity: quantity,
+                transactionId: paymentIntent.id,
+                paymentDate: new Date(),
+              });
+            }
+
+            console.log('Notifications sent successfully');
+          } catch (emailError) {
+            console.error('Error sending notifications:', emailError);
+            // Don't fail the webhook if email fails
+          }
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook handler error:', error);
+      next(error);
+    }
+  });
   // Company Registration
   app.post("/api/auth/register-company", async (req, res, next) => {
     try {
@@ -1689,9 +1828,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Create Stripe payment intent with server-calculated amount
+      // Enable UPI payment methods (Google Pay, PhonePe, Paytm) + Cards
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(calculatedAmount * 100), // Convert to paise (INR smallest unit)
         currency: "inr",
+        payment_method_types: ['card', 'upi'], // Enable both card and UPI payments
         metadata: {
           paymentId: payment.id.toString(),
           companyId: requestingUser.companyId.toString(),
