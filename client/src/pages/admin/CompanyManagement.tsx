@@ -26,8 +26,7 @@ interface CompanyData {
   isActive: boolean;
 }
 
-const publicKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
-console.log("Loading Stripe with key:", publicKey ? "Key exists" : "Missing key");
+const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || "";
 const stripePromise = loadStripe(publicKey);
 
 export default function CompanyManagement() {

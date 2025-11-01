@@ -1828,11 +1828,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Create Stripe payment intent with server-calculated amount
-      // Enable UPI payment methods (Google Pay, PhonePe, Paytm) + Cards
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(calculatedAmount * 100), // Convert to paise (INR smallest unit)
         currency: "inr",
-        payment_method_types: ['card', 'upi'], // Enable both card and UPI payments
+        payment_method_types: ['card'],
         metadata: {
           paymentId: payment.id.toString(),
           companyId: requestingUser.companyId.toString(),
