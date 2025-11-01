@@ -18,7 +18,18 @@ The frontend is built with React and TypeScript, styled using Tailwind CSS. The 
 
 ## Feature Specifications
 
-Key features include Super Admin management of companies (creation, editing, removal, slot purchase), user dashboards with time tracking, tasks, messages, and reports, and admin dashboards for user and task management, reporting, and communication. Data archiving and email notifications for report submissions are also supported. The system also includes a comprehensive 7-layer payment system with Stripe integration for slot purchases, including email confirmations and detailed payment history, and a Super Admin dashboard for platform-wide analytics, company management, and activity logging.
+Key features include Super Admin management of companies (creation, editing, removal, slot purchase), user dashboards with time tracking, tasks, messages, and reports, and admin dashboards for user and task management, reporting, and communication. Data archiving and email notifications for report submissions are also supported. 
+
+The system includes a comprehensive payment system with advanced Stripe integration for slot purchases featuring:
+- **Multiple Payment Methods**: Card payments, UPI (Google Pay, PhonePe, Paytm), and PaymentRequest API for express checkout
+- **UPI QR Code Support**: Automatic QR code generation and display for scan & pay functionality
+- **Secure Webhooks**: Automatic slot allocation via webhook with signature verification and idempotent processing
+- **Smart Payment Polling**: Real-time payment status checks for UPI transactions with graceful timeout handling
+- **Dual Verification**: Both frontend polling and webhook-based verification for reliability
+- **Email Notifications**: Automated payment confirmations sent to both company admins and super admin
+- **Payment History**: Detailed transaction records with receipt numbers and downloadable invoices
+
+Additional features include a Super Admin dashboard for platform-wide analytics, company management, and activity logging.
 
 ## System Design Choices
 
