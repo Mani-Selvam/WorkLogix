@@ -9,6 +9,10 @@ export const companies = pgTable("companies", {
   name: varchar("name", { length: 255 }).notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  phone: varchar("phone", { length: 20 }),
+  website: text("website"),
+  location: varchar("location", { length: 100 }),
+  description: text("description"),
   maxAdmins: integer("max_admins").notNull().default(1),
   maxMembers: integer("max_members").notNull().default(10),
   isActive: boolean("is_active").notNull().default(true),
@@ -207,6 +211,13 @@ export const companyRegistrationSchema = z.object({
   name: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  phone: z.string().optional(),
+  website: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  location: z.string().optional(),
+  description: z.string().optional(),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the terms and conditions" }),
+  }),
 });
 
 export const superAdminLoginSchema = z.object({

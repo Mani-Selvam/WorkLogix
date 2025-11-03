@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation, Link } from "wouter";
 import { useEffect, useState } from "react";
@@ -19,7 +21,16 @@ export default function LoginPage() {
   const cleanPath = location.split('?')[0].replace(/\/$/, '');
   const formType = cleanPath === '/register' ? 'register' : cleanPath === '/login/admin' ? 'admin' : 'user';
   
-  const [companyRegData, setCompanyRegData] = useState({ name: "", email: "", password: "" });
+  const [companyRegData, setCompanyRegData] = useState({ 
+    name: "", 
+    email: "", 
+    password: "", 
+    phone: "", 
+    website: "", 
+    location: "", 
+    description: "", 
+    acceptTerms: false 
+  });
   const [companyAdminData, setCompanyAdminData] = useState({ companyName: "", email: "", serverId: "", password: "" });
   const [companyUserData, setCompanyUserData] = useState({ username: "", userId: "", password: "" });
 
@@ -62,7 +73,16 @@ export default function LoginPage() {
         description: data.message,
         duration: 10000,
       });
-      setCompanyRegData({ name: "", email: "", password: "" });
+      setCompanyRegData({ 
+        name: "", 
+        email: "", 
+        password: "", 
+        phone: "", 
+        website: "", 
+        location: "", 
+        description: "", 
+        acceptTerms: false 
+      });
       setIsLoading(false);
     } catch (error: any) {
       setError(error.message || "Registration failed");
@@ -193,6 +213,64 @@ export default function LoginPage() {
                       required
                       data-testid="input-company-password"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-phone">Phone Number <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                    <Input
+                      id="company-phone"
+                      type="tel"
+                      placeholder="+91 9876543210"
+                      value={companyRegData.phone}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, phone: e.target.value })}
+                      data-testid="input-company-phone"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-website">Company Website <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                    <Input
+                      id="company-website"
+                      type="url"
+                      placeholder="https://yourcompany.com"
+                      value={companyRegData.website}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, website: e.target.value })}
+                      data-testid="input-company-website"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-location">Location / Country <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                    <Input
+                      id="company-location"
+                      type="text"
+                      placeholder="India"
+                      value={companyRegData.location}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, location: e.target.value })}
+                      data-testid="input-company-location"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-description">Company Description <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                    <Textarea
+                      id="company-description"
+                      placeholder="We provide SaaS solutions for startups..."
+                      value={companyRegData.description}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, description: e.target.value })}
+                      rows={3}
+                      data-testid="input-company-description"
+                    />
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="accept-terms"
+                      checked={companyRegData.acceptTerms}
+                      onCheckedChange={(checked) => setCompanyRegData({ ...companyRegData, acceptTerms: checked as boolean })}
+                      data-testid="checkbox-accept-terms"
+                    />
+                    <Label htmlFor="accept-terms" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      I accept the{" "}
+                      <a href="#" className="text-primary hover:underline" data-testid="link-terms">
+                        Terms & Conditions
+                      </a>
+                    </Label>
                   </div>
                   {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
                   <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-register-company">

@@ -1,0 +1,69 @@
+You don’t want to change the existing Company Registration procedure (which generates and emails a unique Company ID like CMP-XYZ123).
+
+You just want to extend the same flow with extra frontend fields for more company details — while keeping the Company ID generation + email flow exactly as it is.
+
+Here’s your final, complete structure 👇
+
+🏢 Company Registration Form (Final Structure)
+🎯 Purpose
+
+To register a new company in the system and automatically generate a unique Company ID (e.g. CMP-XYZ123) which is then emailed to the company admin after successful registration.
+
+🧾 Form Fields (Frontend)
+Label	Type	Required	Description
+🏢 Company Name	text	✅	Official name of the company (e.g. “NextGen Tech Pvt Ltd”)
+📧 Company Email	email	✅	Used for login and for receiving the generated Company ID
+🔐 Password	password	✅	Password used by the Company Admin to log in
+📞 Phone Number	text	Optional	For contact or verification purposes
+🌐 Company Website (optional)	text / url	❌	Optional field for company profile completeness
+📍 Location / Country	select / text	❌	Used for currency setup and localization (e.g. INR, USD)
+📄 Company Description	textarea	❌	Short summary (industry, purpose, or services offered)
+✅ Terms & Conditions	checkbox	✅	Must accept before registration is allowed
+🧠 Backend Process (No Change)
+
+1️⃣ POST Route: /api/auth/register-company
+2️⃣ Validation:
+
+Required: company_name, company_email, password
+
+Optional: phone, website, location, description
+3️⃣ Unique Company ID Generator:
+
+const companyId = "CMP-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+
+4️⃣ Database Save:
+Store all fields (including optional ones).
+5️⃣ Send Email:
+Automatically email the Company ID and login instructions.
+
+🗄️ Database Table – companies
+Column	Type	Example
+id	Auto / UUID	1
+company_name	VARCHAR	NextGen Tech Pvt Ltd
+company_email	VARCHAR	admin@nextgen.com
+
+password	HASHED	$2a$10$JH8...
+phone	VARCHAR	+91 9876543210
+website	VARCHAR	https://nextgentech.in
+location	VARCHAR	India
+description	TEXT	“We provide SaaS solutions for startups.”
+company_id	VARCHAR	CMP-XYZ123
+created_at	TIMESTAMP	2025-11-03T18:00:00Z
+💌 Email Example (Auto-sent on Success)
+
+Subject: 🎉 Welcome to WorkLogix – Your Company Has Been Registered!
+
+Body:
+
+Hello NextGen Tech Pvt Ltd,
+
+Your company has been successfully registered on WorkLogix.
+
+Your Company ID: CMP-XYZ123  
+Login URL: https://worklogix.com/company-admin-login
+
+Use your registered email and password to log in.
+
+Thank you for joining us!
+– WorkLogix Team

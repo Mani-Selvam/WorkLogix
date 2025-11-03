@@ -168,6 +168,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: validatedData.name,
         email: validatedData.email,
         password: hashedPassword,
+        phone: validatedData.phone,
+        website: validatedData.website,
+        location: validatedData.location,
+        description: validatedData.description,
       });
       
       await sendCompanyServerIdEmail({
