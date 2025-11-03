@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/components/LoginPage";
 import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import UserLayout from "@/components/UserLayout";
@@ -73,9 +74,13 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any;
 }
 
 function Router() {
+  const { user } = useAuth();
+
   return (
     <Switch>
-      <Route path="/" component={LoginPage} />
+      <Route path="/" component={user ? () => <Redirect to="/admin" /> : LandingPage} />
+      <Route path="/login/company" component={LoginPage} />
+      <Route path="/login/user" component={LoginPage} />
       <Route path="/superadmin" component={SuperAdminLogin} />
       <Route path="/user/overview">
         {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}

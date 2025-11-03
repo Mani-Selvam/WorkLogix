@@ -1,0 +1,120 @@
+🌐 WorkLogix Main Website — Structure Prompt
+🎯 Goal:
+
+Create a modern, professional main landing page for the WorkLogix Multi-Company Management System.
+This is the public entry website, before users log in.
+
+🏗️ Page Sections
+1️⃣ Navbar
+
+Logo → “WorkLogix”
+
+Navigation Links → Home | Features | Access | About | Contact
+
+Buttons → Login (dropdown: Company / User) + Register Company
+
+Sticky top + shadow
+
+2️⃣ Hero Section
+
+Background: gradient (from-indigo-600 to-cyan-500) or subtle glassmorphism.
+
+Left side:
+
+Title → “Manage Multiple Companies with One Central System”
+
+Subtitle → “WorkLogix helps businesses manage teams, slots, and activities in a secure, unified dashboard.”
+
+CTA Buttons:
+
+🚀 Register Your Company
+
+🔐 Company Login
+
+Right side: 3D illustration or dashboard preview mockup (you can later replace with a screenshot).
+
+3️⃣ About Section
+
+Title: “What is WorkLogix?”
+
+Text:
+“WorkLogix is a powerful multi-company management platform designed to centralize control for Super Admins, streamline operations for Company Admins, and simplify access for Company Users.”
+
+Optional: Animated icons or timeline.
+
+4️⃣ Key Features Section
+
+Cards grid (3 or 6 cards total):
+Each with icon, title, and small description:
+
+Icon	Title	Description
+🧠	Super Admin Control	Monitor all companies, users, and slot usage in real-time.
+🏢	Company Registration	Auto-generates unique company IDs with email verification.
+👨‍💼	Admin Dashboard	Manage users, slots, and internal reports.
+👥	User Portal	Simple, secure login for company employees.
+💳	Slot-Based System	Buy and manage additional user slots easily.
+🔔	Real-Time Notifications	Get instant alerts for updates and activities.
+5️⃣ Access Hierarchy Section
+
+Title: “System Access Structure”
+
+3-tier visual (horizontal or vertical cards):
+
+🧠 Super Admin – Full platform control
+
+🏢 Company Admin – Manages own company & users
+
+👤 Company User – Access own profile & reports
+
+Add arrows or icons showing hierarchy flow.
+
+6️⃣ Quick Access Buttons Section
+
+Clean section with 3 cards:
+
+🔐 Super Admin (hidden route info)
+
+🏢 Company Admin Login
+
+👤 Company User Login
+
+Optional hover effect or animated buttons:
+“→ Go to Portal”
+
+7️⃣ Testimonials / Stats (Optional)
+
+If you want to show credibility:
+
+“Over 100+ Companies Registered”
+
+“500+ Active Users”
+
+“99.9% System Uptime”
+
+8️⃣ Contact / Footer
+
+Title: “Get in Touch”
+
+Email: support@worklogix.com
+
+Phone: +91 88256 20014
+
+Links: Home | About | Login | Register
+
+Footer bottom: © 2025 WorkLogix. All rights reserved.
+
+🧩 Design Style
+
+Theme: Modern, professional SaaS (like Notion or Stripe)
+
+Font: “Poppins” or “Inter”
+
+Primary Color: #4f46e5 (indigo)
+
+Accent Color: #06b6d4 (cyan)
+
+Layout: Full-width responsive grid
+
+Buttons: Rounded-xl, gradient hover
+
+Animations: Fade-in / slide-up on scroll
