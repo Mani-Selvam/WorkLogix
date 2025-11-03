@@ -28,7 +28,15 @@ The frontend is built with React and TypeScript, styled using Tailwind CSS. The 
 
 ## Feature Specifications
 
-Key features include Super Admin management of companies (creation, editing, removal, slot purchase), user dashboards with time tracking, tasks, messages, and reports, and admin dashboards for user and task management, reporting, and communication. Data archiving and email notifications for report submissions are also supported. 
+Key features include Super Admin management of companies (creation, editing, removal, slot purchase), user dashboards with time tracking, tasks, messages, and reports, and admin dashboards for user and task management, reporting, and communication. Data archiving and email notifications for report submissions are also supported.
+
+### Company Registration
+The company registration flow includes a comprehensive form that captures both required and optional company information:
+- **Required Fields**: Company Name, Company Email (used for login and notifications), Password
+- **Optional Fields**: Phone Number, Company Website, Location/Country, Company Description
+- **Terms & Conditions**: Mandatory checkbox acceptance before registration
+- **Automatic ID Generation**: System generates unique Company Server ID (format: CMP-XXXXX) upon successful registration
+- **Email Notification**: Automated email sent to company admin with the generated Company Server ID and login instructions 
 
 The system includes a comprehensive payment system with advanced Stripe integration for slot purchases featuring:
 - **Multiple Payment Methods**: Card payments, UPI (Google Pay, PhonePe, Paytm), and PaymentRequest API for express checkout
@@ -44,6 +52,8 @@ Additional features include a Super Admin dashboard for platform-wide analytics,
 ## System Design Choices
 
 The system utilizes a PostgreSQL database with tables for `companies`, `users`, `tasks`, `reports`, `messages`, `ratings`, `file_uploads`, `company_payments`, `adminActivityLogs`, and `archive_reports`. All multi-tenant tables include a `companyId` foreign key. A RESTful API provides endpoints for all functionalities, with company-based authorization.
+
+The `companies` table includes both required fields (name, email, password, serverId) and optional profile fields (phone, website, location, description) to support comprehensive company information capture during registration.
 
 # External Dependencies
 
