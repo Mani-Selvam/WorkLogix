@@ -74,10 +74,10 @@ export default function LandingPage() {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link href="/">
-              <a className="flex items-center space-x-2 cursor-pointer" data-testid="link-home">
+              <div className="flex items-center space-x-2 cursor-pointer" data-testid="link-home">
                 <Building2 className="h-8 w-8 text-indigo-600" />
                 <span className="text-2xl font-bold text-gray-900 dark:text-white">WorkLogix</span>
-              </a>
+              </div>
             </Link>
 
             {/* Desktop Navigation */}
@@ -98,19 +98,19 @@ export default function LandingPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href="/login/company">
-                      <a className="w-full cursor-pointer" data-testid="link-company-login">Company Admin</a>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/login/user">
-                      <a className="w-full cursor-pointer" data-testid="link-user-login">Company User</a>
-                    </Link>
-                  </DropdownMenuItem>
+                  <Link href="/login/company">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-company-login">
+                      Company Admin
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/login/user">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-user-login">
+                      Company User
+                    </DropdownMenuItem>
+                  </Link>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href="/">
+              <Link href="/login/company">
                 <Button className="bg-indigo-600 hover:bg-indigo-700" data-testid="button-register">
                   Register Company
                 </Button>
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 <Link href="/login/user">
                   <Button variant="outline" className="w-full" data-testid="button-mobile-user-login">Company User Login</Button>
                 </Link>
-                <Link href="/">
+                <Link href="/login/company">
                   <Button className="w-full bg-indigo-600 hover:bg-indigo-700" data-testid="button-mobile-register">Register Company</Button>
                 </Link>
               </div>
@@ -164,7 +164,7 @@ export default function LandingPage() {
                 WorkLogix helps businesses manage teams, slots, and activities in a secure, unified dashboard.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/">
+                <Link href="/login/company">
                   <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8" data-testid="button-hero-register">
                     🚀 Register Your Company
                   </Button>
@@ -466,9 +466,9 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-4" data-testid="text-footer-access">Access</h3>
               <ul className="space-y-2">
-                <li><Link href="/login/company"><a className="text-gray-400 hover:text-white transition" data-testid="link-footer-company-login">Company Login</a></Link></li>
-                <li><Link href="/login/user"><a className="text-gray-400 hover:text-white transition" data-testid="link-footer-user-login">User Login</a></Link></li>
-                <li><Link href="/"><a className="text-gray-400 hover:text-white transition" data-testid="link-footer-register">Register</a></Link></li>
+                <li><Link href="/login/company" className="text-gray-400 hover:text-white transition" data-testid="link-footer-company-login">Company Login</Link></li>
+                <li><Link href="/login/user" className="text-gray-400 hover:text-white transition" data-testid="link-footer-user-login">User Login</Link></li>
+                <li><Link href="/login/company" className="text-gray-400 hover:text-white transition" data-testid="link-footer-register">Register</Link></li>
               </ul>
             </div>
 
