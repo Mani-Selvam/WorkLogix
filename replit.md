@@ -12,6 +12,16 @@ I prefer a clear, modern UI with a clean aesthetic, drawing inspiration from too
 
 The design philosophy emphasizes a clean, modern interface inspired by Linear and Notion, utilizing a professional deep blue primary color and "Inter" for UI typography, with "JetBrains Mono" for data. It's a mobile-first, responsive design with dark mode support, built with Shadcn UI components for consistency. Navigation includes a multi-page system with a persistent left sidebar for dashboards.
 
+The application now includes a comprehensive public landing page at the root route ("/") featuring:
+- **Professional Navbar**: Responsive navigation with logo, menu links, Login dropdown, and Register CTA button
+- **Hero Section**: Gradient background (indigo-to-cyan) with compelling headline, call-to-action buttons, and dashboard preview
+- **Platform Stats**: Key metrics display (500+ companies, 10K+ users, 1M+ tasks)
+- **Features Showcase**: Grid of 6 key features with icons (Multi-company Management, Real-time Tracking, etc.)
+- **Access Hierarchy**: Visual representation of the three-tier role system (Super Admin → Company Admin → Company Members)
+- **Quick Access**: Direct portal links for different user types
+- **Contact Section**: Footer with company information and navigation links
+- **Mobile Responsive**: Full mobile menu and responsive layouts with proper accessibility (data-testid attributes)
+
 ## Technical Implementations
 
 The frontend is built with React and TypeScript, styled using Tailwind CSS. The backend runs on Express.js. State management uses React Query and Context API. Authentication is handled by Firebase Authentication with Google Sign-In, supporting Super Admin, Company Admin, and Company Member roles. Authorization is role-based and company-scoped across all data. Multi-tenancy is implemented with a three-tier hierarchy, `companyId` foreign keys for data isolation, and configurable `maxAdmins` and `maxMembers` slot limits. User management allows admins to create company-specific users. Task management includes priority, deadline, status, and a real-time timer. Reporting supports time-based submissions. Communication features private messaging and group announcements. A critical security limitation is the reliance on client-supplied `x-user-id` headers for authentication; proper server-side token verification is required for production.
