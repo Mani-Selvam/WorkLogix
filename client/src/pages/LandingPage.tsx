@@ -98,7 +98,7 @@ export default function LandingPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <Link href="/login/company">
+                  <Link href="/login/admin">
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-company-login">
                       Company Admin
                     </DropdownMenuItem>
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button asChild className="bg-indigo-600 hover:bg-indigo-700" data-testid="button-register">
-                <Link href="/login/company">
+                <Link href="/register">
                   Register Company
                 </Link>
               </Button>
@@ -137,13 +137,13 @@ export default function LandingPage() {
               <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-contact">Contact</a>
               <div className="flex flex-col space-y-2 pt-4 border-t">
                 <Button asChild variant="outline" className="w-full" data-testid="button-mobile-company-login">
-                  <Link href="/login/company">Company Admin Login</Link>
+                  <Link href="/login/admin">Company Admin Login</Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full" data-testid="button-mobile-user-login">
                   <Link href="/login/user">Company User Login</Link>
                 </Button>
                 <Button asChild className="w-full bg-indigo-600 hover:bg-indigo-700" data-testid="button-mobile-register">
-                  <Link href="/login/company">Register Company</Link>
+                  <Link href="/register">Register Company</Link>
                 </Button>
               </div>
             </div>
@@ -165,12 +165,12 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8" data-testid="button-hero-register">
-                  <Link href="/login/company">
+                  <Link href="/register">
                     🚀 Register Your Company
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8" data-testid="button-hero-login">
-                  <Link href="/login/company">
+                  <Link href="/login/admin">
                     🔐 Company Login
                   </Link>
                 </Button>
@@ -340,7 +340,7 @@ export default function LandingPage() {
               </Card>
             </Link>
 
-            <Link href="/login/company">
+            <Link href="/login/admin">
               <Card className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1 group" data-testid="card-quick-access-company-admin">
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -466,9 +466,9 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-4" data-testid="text-footer-access">Access</h3>
               <ul className="space-y-2">
-                <li><Link href="/login/company" className="text-gray-400 hover:text-white transition" data-testid="link-footer-company-login">Company Login</Link></li>
+                <li><Link href="/login/admin" className="text-gray-400 hover:text-white transition" data-testid="link-footer-company-login">Company Login</Link></li>
                 <li><Link href="/login/user" className="text-gray-400 hover:text-white transition" data-testid="link-footer-user-login">User Login</Link></li>
-                <li><Link href="/login/company" className="text-gray-400 hover:text-white transition" data-testid="link-footer-register">Register</Link></li>
+                <li><Link href="/register" className="text-gray-400 hover:text-white transition" data-testid="link-footer-register">Register</Link></li>
               </ul>
             </div>
 

@@ -79,8 +79,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={user ? () => <Redirect to="/admin" /> : LandingPage} />
-      <Route path="/login/company" component={LoginPage} />
+      <Route path="/register" component={LoginPage} />
+      <Route path="/login/admin" component={LoginPage} />
       <Route path="/login/user" component={LoginPage} />
+      <Route path="/login/company" component={() => <Redirect to="/login/admin" />} />
       <Route path="/superadmin" component={SuperAdminLogin} />
       <Route path="/user/overview">
         {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}

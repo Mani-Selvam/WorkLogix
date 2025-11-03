@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation, Link } from "wouter";
 import { useEffect, useState } from "react";
@@ -12,10 +11,13 @@ import { ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const { user, userRole, setUser, setUserRole, setDbUserId, setCompanyId } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
+  
+  const cleanPath = location.split('?')[0].replace(/\/$/, '');
+  const formType = cleanPath === '/register' ? 'register' : cleanPath === '/login/admin' ? 'admin' : 'user';
   
   const [companyRegData, setCompanyRegData] = useState({ name: "", email: "", password: "" });
   const [companyAdminData, setCompanyAdminData] = useState({ companyName: "", email: "", serverId: "", password: "" });
@@ -32,6 +34,11 @@ export default function LoginPage() {
       }
     }
   }, [user, userRole, setLocation]);
+
+  useEffect(() => {
+    setError("");
+    setIsLoading(false);
+  }, [location]);
 
   const handleCompanyRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,181 +151,191 @@ export default function LoginPage() {
             <p className="text-sm sm:text-base text-muted-foreground">Employee Work Tracking & Task Management</p>
           </div>
 
-          <Tabs defaultValue="company-reg" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="company-reg" data-testid="tab-company-register">Register Company</TabsTrigger>
-              <TabsTrigger value="company-admin" data-testid="tab-company-admin">Company Admin</TabsTrigger>
-              <TabsTrigger value="company-user" data-testid="tab-company-user">Company User</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="company-reg">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Register Your Company</CardTitle>
-                  <CardDescription>Get your unique Company Server ID</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCompanyRegistration} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="company-name">Company Name</Label>
-                      <Input
-                        id="company-name"
-                        type="text"
-                        placeholder="Acme Inc"
-                        value={companyRegData.name}
-                        onChange={(e) => setCompanyRegData({ ...companyRegData, name: e.target.value })}
-                        required
-                        data-testid="input-company-name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company-email">Company Email</Label>
-                      <Input
-                        id="company-email"
-                        type="email"
-                        placeholder="admin@company.com"
-                        value={companyRegData.email}
-                        onChange={(e) => setCompanyRegData({ ...companyRegData, email: e.target.value })}
-                        required
-                        data-testid="input-company-email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company-password">Password</Label>
-                      <Input
-                        id="company-password"
-                        type="password"
-                        value={companyRegData.password}
-                        onChange={(e) => setCompanyRegData({ ...companyRegData, password: e.target.value })}
-                        required
-                        data-testid="input-company-password"
-                      />
-                    </div>
-                    {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
-                    <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-register-company">
-                      {isLoading ? "Registering..." : "Register Company"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
+{formType === 'register' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Register Your Company</CardTitle>
+                <CardDescription>Get your unique Company Server ID</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCompanyRegistration} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company-name">Company Name</Label>
+                    <Input
+                      id="company-name"
+                      type="text"
+                      placeholder="Acme Inc"
+                      value={companyRegData.name}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, name: e.target.value })}
+                      required
+                      data-testid="input-company-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-email">Company Email</Label>
+                    <Input
+                      id="company-email"
+                      type="email"
+                      placeholder="admin@company.com"
+                      value={companyRegData.email}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, email: e.target.value })}
+                      required
+                      data-testid="input-company-email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company-password">Password</Label>
+                    <Input
+                      id="company-password"
+                      type="password"
+                      value={companyRegData.password}
+                      onChange={(e) => setCompanyRegData({ ...companyRegData, password: e.target.value })}
+                      required
+                      data-testid="input-company-password"
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
+                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-register-company">
+                    {isLoading ? "Registering..." : "Register Company"}
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Already have an account?{" "}
+                    <Link href="/login/admin" className="text-primary hover:underline" data-testid="link-to-admin-login">
+                      Company Admin Login
+                    </Link>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
-            <TabsContent value="company-admin">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company Admin Login</CardTitle>
-                  <CardDescription>Access your company dashboard</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCompanyAdminLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-company-name">Company Name</Label>
-                      <Input
-                        id="admin-company-name"
-                        type="text"
-                        placeholder="Acme Inc"
-                        value={companyAdminData.companyName}
-                        onChange={(e) => setCompanyAdminData({ ...companyAdminData, companyName: e.target.value })}
-                        required
-                        data-testid="input-admin-company-name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-email">Company Email</Label>
-                      <Input
-                        id="admin-email"
-                        type="email"
-                        placeholder="admin@company.com"
-                        value={companyAdminData.email}
-                        onChange={(e) => setCompanyAdminData({ ...companyAdminData, email: e.target.value })}
-                        required
-                        data-testid="input-admin-email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-server-id">Company Server ID</Label>
-                      <Input
-                        id="admin-server-id"
-                        type="text"
-                        placeholder="CMP-XYZ123"
-                        value={companyAdminData.serverId}
-                        onChange={(e) => setCompanyAdminData({ ...companyAdminData, serverId: e.target.value })}
-                        required
-                        data-testid="input-admin-server-id"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-password">Password</Label>
-                      <Input
-                        id="admin-password"
-                        type="password"
-                        value={companyAdminData.password}
-                        onChange={(e) => setCompanyAdminData({ ...companyAdminData, password: e.target.value })}
-                        required
-                        data-testid="input-admin-password"
-                      />
-                    </div>
-                    {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
-                    <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-admin-login">
-                      {isLoading ? "Signing in..." : "Sign In"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
+          {formType === 'admin' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Company Admin Login</CardTitle>
+                <CardDescription>Access your company dashboard</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCompanyAdminLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-company-name">Company Name</Label>
+                    <Input
+                      id="admin-company-name"
+                      type="text"
+                      placeholder="Acme Inc"
+                      value={companyAdminData.companyName}
+                      onChange={(e) => setCompanyAdminData({ ...companyAdminData, companyName: e.target.value })}
+                      required
+                      data-testid="input-admin-company-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-email">Company Email</Label>
+                    <Input
+                      id="admin-email"
+                      type="email"
+                      placeholder="admin@company.com"
+                      value={companyAdminData.email}
+                      onChange={(e) => setCompanyAdminData({ ...companyAdminData, email: e.target.value })}
+                      required
+                      data-testid="input-admin-email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-server-id">Company Server ID</Label>
+                    <Input
+                      id="admin-server-id"
+                      type="text"
+                      placeholder="CMP-XYZ123"
+                      value={companyAdminData.serverId}
+                      onChange={(e) => setCompanyAdminData({ ...companyAdminData, serverId: e.target.value })}
+                      required
+                      data-testid="input-admin-server-id"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <Input
+                      id="admin-password"
+                      type="password"
+                      value={companyAdminData.password}
+                      onChange={(e) => setCompanyAdminData({ ...companyAdminData, password: e.target.value })}
+                      required
+                      data-testid="input-admin-password"
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
+                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-admin-login">
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Don't have an account?{" "}
+                    <Link href="/register" className="text-primary hover:underline" data-testid="link-to-register">
+                      Register Company
+                    </Link>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
-            <TabsContent value="company-user">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company User Login</CardTitle>
-                  <CardDescription>Access your workspace</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCompanyUserLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="user-username">Username</Label>
-                      <Input
-                        id="user-username"
-                        type="text"
-                        placeholder="John Doe"
-                        value={companyUserData.username}
-                        onChange={(e) => setCompanyUserData({ ...companyUserData, username: e.target.value })}
-                        required
-                        data-testid="input-user-username"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="user-id">User ID</Label>
-                      <Input
-                        id="user-id"
-                        type="text"
-                        placeholder="USER-ABC123"
-                        value={companyUserData.userId}
-                        onChange={(e) => setCompanyUserData({ ...companyUserData, userId: e.target.value })}
-                        required
-                        data-testid="input-user-id"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="user-password">Password</Label>
-                      <Input
-                        id="user-password"
-                        type="password"
-                        value={companyUserData.password}
-                        onChange={(e) => setCompanyUserData({ ...companyUserData, password: e.target.value })}
-                        required
-                        data-testid="input-user-password"
-                      />
-                    </div>
-                    {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
-                    <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-user-login">
-                      {isLoading ? "Signing in..." : "Sign In"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {formType === 'user' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Company User Login</CardTitle>
+                <CardDescription>Access your workspace</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCompanyUserLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="user-username">Username</Label>
+                    <Input
+                      id="user-username"
+                      type="text"
+                      placeholder="John Doe"
+                      value={companyUserData.username}
+                      onChange={(e) => setCompanyUserData({ ...companyUserData, username: e.target.value })}
+                      required
+                      data-testid="input-user-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user-id">User ID</Label>
+                    <Input
+                      id="user-id"
+                      type="text"
+                      placeholder="USER-ABC123"
+                      value={companyUserData.userId}
+                      onChange={(e) => setCompanyUserData({ ...companyUserData, userId: e.target.value })}
+                      required
+                      data-testid="input-user-id"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user-password">Password</Label>
+                    <Input
+                      id="user-password"
+                      type="password"
+                      value={companyUserData.password}
+                      onChange={(e) => setCompanyUserData({ ...companyUserData, password: e.target.value })}
+                      required
+                      data-testid="input-user-password"
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
+                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-user-login">
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Company admin?{" "}
+                    <Link href="/login/admin" className="text-primary hover:underline" data-testid="link-to-admin-login-from-user">
+                      Admin Login
+                    </Link>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="text-center">
             <Link href="/superadmin">
