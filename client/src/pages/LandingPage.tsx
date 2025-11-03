@@ -110,11 +110,11 @@ export default function LandingPage() {
                   </Link>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href="/login/company">
-                <Button className="bg-indigo-600 hover:bg-indigo-700" data-testid="button-register">
+              <Button asChild className="bg-indigo-600 hover:bg-indigo-700" data-testid="button-register">
+                <Link href="/login/company">
                   Register Company
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -130,21 +130,21 @@ export default function LandingPage() {
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden py-4 space-y-4" data-testid="mobile-menu">
-              <a href="#home" className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-home">Home</a>
-              <a href="#features" className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-features">Features</a>
-              <a href="#access" className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-access">Access</a>
-              <a href="#about" className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-about">About</a>
-              <a href="#contact" className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-contact">Contact</a>
+              <a href="#home" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-home">Home</a>
+              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-features">Features</a>
+              <a href="#access" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-access">Access</a>
+              <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-about">About</a>
+              <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="block text-gray-700 dark:text-gray-300 hover:text-indigo-600" data-testid="link-mobile-contact">Contact</a>
               <div className="flex flex-col space-y-2 pt-4 border-t">
-                <Link href="/login/company">
-                  <Button variant="outline" className="w-full" data-testid="button-mobile-company-login">Company Admin Login</Button>
-                </Link>
-                <Link href="/login/user">
-                  <Button variant="outline" className="w-full" data-testid="button-mobile-user-login">Company User Login</Button>
-                </Link>
-                <Link href="/login/company">
-                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700" data-testid="button-mobile-register">Register Company</Button>
-                </Link>
+                <Button asChild variant="outline" className="w-full" data-testid="button-mobile-company-login">
+                  <Link href="/login/company">Company Admin Login</Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full" data-testid="button-mobile-user-login">
+                  <Link href="/login/user">Company User Login</Link>
+                </Button>
+                <Button asChild className="w-full bg-indigo-600 hover:bg-indigo-700" data-testid="button-mobile-register">
+                  <Link href="/login/company">Register Company</Link>
+                </Button>
               </div>
             </div>
           )}
@@ -164,16 +164,16 @@ export default function LandingPage() {
                 WorkLogix helps businesses manage teams, slots, and activities in a secure, unified dashboard.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/login/company">
-                  <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8" data-testid="button-hero-register">
+                <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8" data-testid="button-hero-register">
+                  <Link href="/login/company">
                     🚀 Register Your Company
-                  </Button>
-                </Link>
-                <Link href="/login/company">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8" data-testid="button-hero-login">
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8" data-testid="button-hero-login">
+                  <Link href="/login/company">
                     🔐 Company Login
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
 
