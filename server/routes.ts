@@ -371,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Please verify your email before logging in. Check your inbox for the verification link." });
       }
       
-      if (company.name !== validatedData.companyName || company.email !== validatedData.email) {
+      if (company.name.toLowerCase() !== validatedData.companyName.toLowerCase() || company.email.toLowerCase() !== validatedData.email.toLowerCase()) {
         return res.status(401).json({ message: "Invalid company credentials" });
       }
       
