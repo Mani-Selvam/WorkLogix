@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import BottomNav, { BottomNavItem } from "./BottomNav";
-import { useState } from "react";
+import CompanyDetailsSetupDialog from "./CompanyDetailsSetupDialog";
+import { useState, useEffect } from "react";
 
 interface NavItem {
   path: string;
@@ -63,13 +64,28 @@ const superAdminBottomNavItems: BottomNavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, userRole, signOut, loggingOut } = useAuth();
+  const { user, userRole, signOut, loggingOut, companyId, setUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
   
   const isSuperAdmin = userRole === 'super_admin';
+  const isCompanyAdmin = userRole === 'company_admin';
   
   const filteredNavItems = isSuperAdmin ? superAdminNavItems : navItems;
   const filteredBottomNavItems = isSuperAdmin ? superAdminBottomNavItems : bottomNavItems;
+
+  useEffect(() => {
+    if (isCompanyAdmin && user && !(user as any).companyProfileComplete) {
+      setShowProfileSetup(true);
+    }
+  }, [isCompanyAdmin, user]);
+
+  const handleProfileSetupComplete = () => {
+    setShowProfileSetup(false);
+    if (user) {
+      setUser({ ...user, companyProfileComplete: true } as any);
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -141,40 +157,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 border-r bg-card flex-col">
-        <SidebarContent />
-      </aside>
+    <>
+      <div className="flex h-screen bg-background">
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:flex md:w-64 border-r bg-card flex-col">
+          <SidebarContent />
+        </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b bg-card">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <SidebarContent />
-            </SheetContent>
-          </Sheet>
-          <h1 className="font-semibold text-lg">WorkLogix Admin</h1>
-          <div className="w-10" /> {/* Spacer for balance */}
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="container max-w-7xl mx-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
-            {children}
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Header */}
+          <div className="md:hidden flex items-center justify-between p-4 border-b bg-card">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+            <h1 className="font-semibold text-lg">WorkLogix Admin</h1>
+            <div className="w-10" /> {/* Spacer for balance */}
           </div>
-        </div>
 
-        {/* Bottom Navigation for Mobile */}
-        <BottomNav items={filteredBottomNavItems} />
-      </main>
-    </div>
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="container max-w-7xl mx-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
+              {children}
+            </div>
+          </div>
+
+          {/* Bottom Navigation for Mobile */}
+          <BottomNav items={filteredBottomNavItems} />
+        </main>
+      </div>
+
+      {/* Company Profile Setup Dialog */}
+      {showProfileSetup && companyId && user && (
+        <CompanyDetailsSetupDialog
+          open={showProfileSetup}
+          companyId={companyId}
+          companyName={user.displayName || ""}
+          onComplete={handleProfileSetupComplete}
+        />
+      )}
+    </>
   );
 }

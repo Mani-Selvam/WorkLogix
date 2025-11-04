@@ -322,7 +322,7 @@ export async function sendPaymentConfirmationEmail(paymentData: {
 }
 
 export async function sendCompanyVerificationEmail(data: {
-  fullName: string;
+  companyName: string;
   email: string;
   serverId: string;
   verificationToken: string;
@@ -339,7 +339,7 @@ export async function sendCompanyVerificationEmail(data: {
             <h1 style="color: #4F46E5; margin: 0;">✅ Company Registration Successful!</h1>
           </div>
           
-          <p style="font-size: 16px; color: #333;">Hello <strong>${data.fullName}</strong>,</p>
+          <p style="font-size: 16px; color: #333;">Hello <strong>${data.companyName}</strong>,</p>
           <p style="font-size: 14px; color: #666; line-height: 1.6;">Your company registration was successful! Welcome to WorkLogix.</p>
           
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">

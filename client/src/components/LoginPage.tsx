@@ -207,7 +207,12 @@ export default function LoginPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="admin-server-id">Company Server ID</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="admin-server-id">Company Server ID</Label>
+                      <Link href="/forgot-company-id" className="text-xs text-primary hover:underline" data-testid="link-forgot-company-id">
+                        Forgot Company ID?
+                      </Link>
+                    </div>
                     <Input
                       id="admin-server-id"
                       type="text"

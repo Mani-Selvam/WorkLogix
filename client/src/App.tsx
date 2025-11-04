@@ -8,6 +8,7 @@ import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/components/LoginPage";
 import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
+import ForgotCompanyIdPage from "@/components/ForgotCompanyIdPage";
 import ResetPasswordPage from "@/components/ResetPasswordPage";
 import CompanyRegistration from "@/pages/CompanyRegistration";
 import EmailVerification from "@/pages/EmailVerification";
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/login/user" component={LoginPage} />
       <Route path="/login/company" component={() => <Redirect to="/login/admin" />} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/forgot-company-id" component={ForgotCompanyIdPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/superadmin" component={SuperAdminLogin} />
       <Route path="/user/overview">

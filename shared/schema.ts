@@ -31,6 +31,7 @@ export const companies = pgTable("companies", {
   logo: text("logo"),
   
   verificationToken: varchar("verification_token", { length: 255 }),
+  verificationTokenExpiry: timestamp("verification_token_expiry"),
   emailVerified: boolean("email_verified").notNull().default(false),
   
   maxAdmins: integer("max_admins").notNull().default(1),
@@ -230,7 +231,7 @@ export const firebaseSigninSchema = z.object({
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 export const companyBasicRegistrationSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  companyName: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -245,7 +246,7 @@ export const companyBasicRegistrationSchema = z.object({
 });
 
 export const companyGoogleRegistrationSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  companyName: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   firebaseUid: z.string().min(1, "Firebase UID is required"),
   photoURL: z.string().optional(),

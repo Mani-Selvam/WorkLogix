@@ -16,7 +16,7 @@ import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
 const registrationSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  companyName: z.string().min(2, "Company name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -44,7 +44,7 @@ export default function CompanyRegistration() {
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      fullName: "",
+      companyName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -116,7 +116,7 @@ export default function CompanyRegistration() {
       const user = result.user;
 
       const res = await apiRequest("POST", "/api/auth/register-company-google", {
-        fullName: user.displayName || user.email?.split('@')[0] || 'User',
+        companyName: user.displayName || user.email?.split('@')[0] || 'Company',
         email: user.email,
         firebaseUid: user.uid,
         photoURL: user.photoURL,
@@ -241,15 +241,15 @@ export default function CompanyRegistration() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="fullName"
+                name="companyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Company Name</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter your full name" 
+                        placeholder="Enter your company name" 
                         {...field} 
-                        data-testid="input-fullname"
+                        data-testid="input-company-name"
                       />
                     </FormControl>
                     <FormMessage />

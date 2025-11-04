@@ -259,10 +259,15 @@ export class DbStorage implements IStorage {
       return null;
     }
     
+    if (company.verificationTokenExpiry && company.verificationTokenExpiry < new Date()) {
+      return null;
+    }
+    
     await db.update(companies)
       .set({ 
         emailVerified: true, 
         verificationToken: null,
+        verificationTokenExpiry: null,
         updatedAt: new Date()
       })
       .where(eq(companies.id, company.id));

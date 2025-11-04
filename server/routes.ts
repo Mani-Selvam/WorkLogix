@@ -225,18 +225,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
       const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
       
       const company = await storage.createCompany({
-        name: validatedData.fullName,
+        name: validatedData.companyName,
         email: validatedData.email,
         password: hashedPassword,
-        contactPerson: validatedData.fullName,
+        contactPerson: validatedData.companyName,
         verificationToken,
+        verificationTokenExpiry,
         emailVerified: false,
       });
       
       await sendCompanyVerificationEmail({
-        fullName: validatedData.fullName,
+        companyName: validatedData.companyName,
         email: validatedData.email,
         serverId: company.serverId,
         verificationToken,
@@ -266,17 +268,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const company = await storage.createCompany({
-        name: validatedData.fullName,
+        name: validatedData.companyName,
         email: validatedData.email,
         password: '',
-        contactPerson: validatedData.fullName,
+        contactPerson: validatedData.companyName,
         logo: validatedData.photoURL,
         emailVerified: true,
       });
       
       const admin = await storage.createUser({
         email: validatedData.email,
-        displayName: validatedData.fullName,
+        displayName: validatedData.companyName,
         firebaseUid: validatedData.firebaseUid,
         photoURL: validatedData.photoURL,
         role: 'company_admin',
@@ -407,8 +409,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      const isProfileComplete = !!(
+        company.companyType && 
+        company.designation && 
+        company.address && 
+        company.pincode && 
+        company.city && 
+        company.state && 
+        company.country && 
+        company.employees && 
+        company.annualTurnover && 
+        company.yearEstablished
+      );
+      
       const { password: _, ...userWithoutPassword } = adminUser;
-      res.json(userWithoutPassword);
+      res.json({ 
+        ...userWithoutPassword, 
+        companyProfileComplete: isProfileComplete 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -854,12 +872,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const requestingUser = await storage.getUserById(parseInt(requestingUserId as string));
-      if (!requestingUser || requestingUser.role !== 'super_admin') {
-        return res.status(403).json({ message: "Only super admins can update companies" });
+      if (!requestingUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const companyId = parseInt(req.params.id);
+      
+      if (requestingUser.role === 'company_admin') {
+        if (requestingUser.companyId !== companyId) {
+          return res.status(403).json({ message: "You can only update your own company" });
+        }
+      } else if (requestingUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
       }
 
       const updates = req.body;
-      await storage.updateCompany(parseInt(req.params.id), updates);
+      await storage.updateCompany(companyId, updates);
       res.json({ message: "Company updated successfully" });
     } catch (error) {
       next(error);
@@ -2282,6 +2310,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/auth/request-password-reset", handlePasswordResetRequest);
   app.post("/api/auth/forgot-password", handlePasswordResetRequest);
+
+  app.post("/api/auth/forgot-company-id", async (req, res, next) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const company = await storage.getCompanyByEmail(email);
+      
+      if (company) {
+        await sendCompanyServerIdEmail({
+          companyName: company.name,
+          companyEmail: company.email,
+          serverId: company.serverId,
+        });
+      }
+      
+      res.json({ message: "If a company exists with this email, the Company Server ID has been sent." });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.post("/api/auth/reset-password", async (req, res, next) => {
     try {
