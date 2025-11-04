@@ -35,6 +35,8 @@ export interface IStorage {
   getCompanyById(id: number): Promise<Company | null>;
   getCompanyByServerId(serverId: string): Promise<Company | null>;
   getCompanyByEmail(email: string): Promise<Company | null>;
+  getCompanyByVerificationToken(token: string): Promise<Company | null>;
+  verifyCompanyEmail(token: string): Promise<Company | null>;
   getAllCompanies(): Promise<Company[]>;
   updateCompany(id: number, updates: Partial<InsertCompany>): Promise<void>;
   incrementCompanySlots(id: number, updates: { maxAdmins?: number; maxMembers?: number }): Promise<void>;
@@ -244,6 +246,28 @@ export class DbStorage implements IStorage {
   async getCompanyByEmail(email: string): Promise<Company | null> {
     const result = await db.select().from(companies).where(eq(companies.email, email)).limit(1);
     return result[0] || null;
+  }
+
+  async getCompanyByVerificationToken(token: string): Promise<Company | null> {
+    const result = await db.select().from(companies).where(eq(companies.verificationToken, token)).limit(1);
+    return result[0] || null;
+  }
+
+  async verifyCompanyEmail(token: string): Promise<Company | null> {
+    const company = await this.getCompanyByVerificationToken(token);
+    if (!company) {
+      return null;
+    }
+    
+    await db.update(companies)
+      .set({ 
+        emailVerified: true, 
+        verificationToken: null,
+        updatedAt: new Date()
+      })
+      .where(eq(companies.id, company.id));
+    
+    return await this.getCompanyById(company.id);
   }
 
   async getAllCompanies(): Promise<Company[]> {

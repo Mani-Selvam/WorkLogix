@@ -2,10 +2,10 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, companyBasicRegistrationSchema, companyGoogleRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail } from "./email";
+import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail, sendCompanyVerificationEmail } from "./email";
 import crypto from "crypto";
 import Stripe from "stripe";
 
@@ -213,6 +213,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Basic Registration (Manual)
+  app.post("/api/auth/register-company-basic", async (req, res, next) => {
+    try {
+      const validatedData = companyBasicRegistrationSchema.parse(req.body);
+      
+      const existingCompany = await storage.getCompanyByEmail(validatedData.email);
+      if (existingCompany) {
+        return res.status(400).json({ message: "A company with this email already exists" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      
+      const company = await storage.createCompany({
+        name: validatedData.fullName,
+        email: validatedData.email,
+        password: hashedPassword,
+        contactPerson: validatedData.fullName,
+        verificationToken,
+        emailVerified: false,
+      });
+      
+      await sendCompanyVerificationEmail({
+        fullName: validatedData.fullName,
+        email: validatedData.email,
+        serverId: company.serverId,
+        verificationToken,
+      });
+      
+      res.json({ 
+        serverId: company.serverId,
+        email: company.email,
+        message: `Registration successful! Your Company Server ID is ${company.serverId}. Please check your email to verify your account.`
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Company Google Registration
+  app.post("/api/auth/register-company-google", async (req, res, next) => {
+    try {
+      const validatedData = companyGoogleRegistrationSchema.parse(req.body);
+      
+      const existingCompany = await storage.getCompanyByEmail(validatedData.email);
+      if (existingCompany) {
+        return res.status(400).json({ message: "A company with this email already exists" });
+      }
+      
+      const company = await storage.createCompany({
+        name: validatedData.fullName,
+        email: validatedData.email,
+        password: '',
+        contactPerson: validatedData.fullName,
+        logo: validatedData.photoURL,
+        emailVerified: true,
+      });
+      
+      const admin = await storage.createUser({
+        email: validatedData.email,
+        displayName: validatedData.fullName,
+        firebaseUid: validatedData.firebaseUid,
+        photoURL: validatedData.photoURL,
+        role: 'company_admin',
+        companyId: company.id,
+      });
+      
+      await sendCompanyServerIdEmail({
+        companyName: company.name,
+        companyEmail: company.email,
+        serverId: company.serverId,
+      });
+      
+      const { password: _, ...companyWithoutPassword } = company;
+      const { password: __, ...adminWithoutPassword } = admin;
+      
+      res.json({ 
+        company: companyWithoutPassword,
+        user: adminWithoutPassword,
+        message: `Registration successful! Your Company Server ID is ${company.serverId}. An email has been sent to ${company.email}.`
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      next(error);
+    }
+  });
+
+  // Verify Company Email
+  app.get("/api/auth/verify-company", async (req, res, next) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Verification token is required" });
+      }
+      
+      const company = await storage.verifyCompanyEmail(token);
+      
+      if (!company) {
+        return res.status(400).json({ message: "Invalid or expired verification token" });
+      }
+      
+      const { password: _, ...companyWithoutPassword } = company;
+      res.json({ 
+        company: companyWithoutPassword,
+        message: "Email verified successfully! You can now log in to your dashboard."
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Super Admin Login
   app.post("/api/auth/super-admin-login", async (req, res, next) => {
     try {
@@ -248,13 +365,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid Company Server ID" });
       }
       
+      if (!company.emailVerified) {
+        return res.status(401).json({ message: "Please verify your email before logging in. Check your inbox for the verification link." });
+      }
+      
       if (company.name !== validatedData.companyName || company.email !== validatedData.email) {
         return res.status(401).json({ message: "Invalid company credentials" });
       }
       
-      const isValidPassword = await bcrypt.compare(validatedData.password, company.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid password" });
+      if (company.password) {
+        const isValidPassword = await bcrypt.compare(validatedData.password, company.password);
+        if (!isValidPassword) {
+          return res.status(401).json({ message: "Invalid password" });
+        }
       }
       
       const adminUsers = await storage.getUsersByCompanyId(company.id);

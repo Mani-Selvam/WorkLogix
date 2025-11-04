@@ -31,12 +31,37 @@ The frontend is built with React and TypeScript, styled using Tailwind CSS. The 
 Key features include Super Admin management of companies (creation, editing, removal, slot purchase), user dashboards with time tracking, tasks, messages, and reports, and admin dashboards for user and task management, reporting, and communication. Data archiving and email notifications for report submissions are also supported.
 
 ### Company Registration
-The company registration flow includes a comprehensive form that captures both required and optional company information:
-- **Required Fields**: Company Name, Company Email (used for login and notifications), Password
-- **Optional Fields**: Phone Number, Company Website, Location/Country, Company Description
+The company registration flow includes both manual and Google OAuth registration options:
+
+**Manual Registration:**
+- **Required Fields**: Full Name, Email Address, Password (with strength validation), Confirm Password
+- **Password Requirements**: Minimum 8 characters with uppercase, lowercase, number, and special character
 - **Terms & Conditions**: Mandatory checkbox acceptance before registration
-- **Automatic ID Generation**: System generates unique Company Server ID (format: CMP-XXXXX) upon successful registration
-- **Email Notification**: Automated email sent to company admin with the generated Company Server ID and login instructions 
+- **Email Verification**: Sends verification email with unique token (24-hour validity)
+- **Automatic ID Generation**: System generates unique Company Server ID (format: CMP-XXXXX)
+- **Email Notification**: Sends verification link and Company Server ID to registered email
+
+**Google OAuth Registration:**
+- **One-Click Registration**: Register with Google button for instant signup
+- **Auto-Verified**: Email is automatically verified by Google OAuth
+- **Simplified Flow**: Only requires accepting Terms & Conditions
+- **Profile Data**: Automatically captures name, email, and profile photo from Google
+- **Immediate Access**: Company account is created and verified instantly
+
+**Post-Registration:**
+- Users receive their unique Company Server ID via email
+- Email verification required for manual registration before login
+- Company profile setup (details, location, business info) can be completed after first login
+
+**Security Note:**
+⚠️ **IMPORTANT**: The current Google OAuth implementation does NOT verify Firebase ID tokens server-side. For production deployment:
+1. Install Firebase Admin SDK: `npm install firebase-admin`
+2. Add service account key to secrets
+3. Implement server-side token verification in `/api/auth/register-company-google` endpoint
+4. Verify the `email_verified` claim from the decoded token
+5. Only set `emailVerified: true` after successful token verification
+
+Without this verification, the Google OAuth endpoint is vulnerable to privilege escalation attacks. 
 
 The system includes a comprehensive payment system with advanced Stripe integration for slot purchases featuring:
 - **Multiple Payment Methods**: Card payments, UPI (Google Pay, PhonePe, Paytm), and PaymentRequest API for express checkout

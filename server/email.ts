@@ -321,6 +321,81 @@ export async function sendPaymentConfirmationEmail(paymentData: {
   }
 }
 
+export async function sendCompanyVerificationEmail(data: {
+  fullName: string;
+  email: string;
+  serverId: string;
+  verificationToken: string;
+}) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    
+    const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/verify?token=${data.verificationToken}`;
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">✅ Company Registration Successful!</h1>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${data.fullName}</strong>,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">Your company registration was successful! Welcome to WorkLogix.</p>
+          
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 14px; margin: 0 0 10px 0; opacity: 0.9;">Your Company Server ID:</p>
+            <p style="font-size: 32px; font-weight: bold; color: white; margin: 0; letter-spacing: 2px;">${data.serverId}</p>
+          </div>
+          
+          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="color: #92400E; font-size: 14px; margin: 0;">
+              <strong>⚠️ Important:</strong> Please save your Company Server ID securely. You will need it to log in.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <p style="font-size: 14px; color: #333; margin-bottom: 15px;">Please confirm your registration by clicking the button below:</p>
+            <a href="${verificationUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              👉 Verify Your Email
+            </a>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="color: #6B7280; font-size: 12px; margin: 0; word-break: break-all;">
+              <strong>Or copy this link:</strong><br/>
+              ${verificationUrl}
+            </p>
+          </div>
+          
+          <div style="background-color: #FEE2E2; border-left: 4px solid #DC2626; padding: 15px; margin: 25px 0; border-radius: 4px;">
+            <p style="color: #991B1B; font-size: 14px; margin: 0;">
+              <strong>⏰ Important:</strong> This verification link expires in <strong>24 hours</strong>. After confirmation, you can log in to your company dashboard.
+            </p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Best regards,<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    `;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: data.email,
+      subject: `✅ Verify Your WorkLogix Registration - Company ID: ${data.serverId}`,
+      html: htmlContent,
+    });
+
+    console.log(`Verification email sent to ${data.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    return false;
+  }
+}
+
 export async function sendReportNotification(reportData: {
   userName: string;
   reportType: string;

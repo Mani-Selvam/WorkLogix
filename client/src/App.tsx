@@ -9,6 +9,8 @@ import LoginPage from "@/components/LoginPage";
 import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
 import ResetPasswordPage from "@/components/ResetPasswordPage";
+import CompanyRegistration from "@/pages/CompanyRegistration";
+import EmailVerification from "@/pages/EmailVerification";
 import UserLayout from "@/components/UserLayout";
 import AdminLayout from "@/components/AdminLayout";
 import Overview from "@/pages/user/Overview";
@@ -81,7 +83,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={user ? () => <Redirect to="/admin" /> : LandingPage} />
-      <Route path="/register" component={LoginPage} />
+      <Route path="/register" component={CompanyRegistration} />
+      <Route path="/verify" component={EmailVerification} />
       <Route path="/login/admin" component={LoginPage} />
       <Route path="/login/user" component={LoginPage} />
       <Route path="/login/company" component={() => <Redirect to="/login/admin" />} />
