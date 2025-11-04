@@ -1,0 +1,183 @@
+WorkLogix – Secure Registration, Google Login & Verification Flow (Final Structure)
+🔹 1️⃣ User Registration Form (Manual or Google Login)
+Main Screen:
+
+🏢 Register Your Company
+
+Get your unique Company Server ID
+
+Options:
+
+🔘 “Register with Google”
+
+OR
+
+📝 Manual Form
+
+Manual Form Fields:
+
+Full Name
+
+Email Address (Google / business email)
+
+Password (Strong password validation)
+
+Confirm Password
+
+“I accept Terms & Conditions” checkbox
+
+Button → Submit
+
+Notes:
+
+Password strength meter (Weak / Medium / Strong)
+
+Validation before submit
+
+Only one “Submit” button — no “Next”
+
+🔹 2️⃣ Google Login Integration Flow
+
+When user clicks “Register with Google”, system uses Google OAuth 2.0 for authentication.
+
+Step-by-Step Process
+Step	Description
+1️⃣	User clicks “Register with Google”
+2️⃣	Google OAuth popup opens
+3️⃣	User selects Gmail account
+4️⃣	WorkLogix receives verified info from Google:
+• Full Name
+• Email Address
+• Profile Picture (optional)
+5️⃣	Email is auto-verified by Google → no need for separate manual validation
+6️⃣	System auto-fills registration form (Full Name + Email)
+7️⃣	Animated popup appears → ask user to complete extra details:
+Password, Company Name, Terms acceptance
+8️⃣	Once submitted → system proceeds with same backend registration flow
+
+✅ Google Sign-In ensures verified email and secure authentication.
+
+🔹 3️⃣ Backend Registration Process (Same for Both Manual & Google Login)
+Step	Description
+1️⃣	Validate all inputs (email, password strength if manual)
+2️⃣	Check if email already exists in DB
+3️⃣	Generate Unique Company ID → e.g., CMP-XYZ123
+4️⃣	Create Verification Token (used for email confirmation)
+5️⃣	Save record in DB with status = “Pending Verification”
+6️⃣	Send Verification Email (for manual) / Skip if Google verified
+🔹 4️⃣ Verification Email (for Manual Registration)
+
+Subject: ✅ Company Registration Successful!
+Body:
+
+Hello [Full Name / Company Name],
+
+Your company registration was successful.
+
+Company ID: CMP-XYZ123
+
+Please confirm your registration:
+👉 https://worklogix.com/verify?token=abc123
+
+After confirmation, you can log in to your company dashboard.
+
+Thank you,  
+The WorkLogix Team
+
+
+Email Sent Using:
+
+Nodemailer / SendGrid
+
+Token stored in DB
+
+Link valid for 24 hours
+
+✅ Google Login users skip this email verification (since Gmail is verified by OAuth).
+
+🔹 5️⃣ Email Verification Process
+
+When user clicks verification link:
+
+Step	Process
+✅	Backend validates token
+🔁	Update company status → “Active”
+🧾	Clear token from DB
+🎯	Redirect user → Admin Login Page
+🎉	Show success message → “Verification Successful! You can now log in.”
+🔹 6️⃣ Login Process (Manual & Google)
+
+Login Options:
+
+Email + Password
+
+OR
+
+“Sign in with Google”
+
+Manual Login Flow:
+
+Input email + password → verify credentials → redirect to Company Info Setup (if first login).
+
+Google Login Flow:
+
+Click “Sign in with Google” → OAuth verifies identity → auto-login → check DB:
+
+If user exists → redirect to dashboard
+
+If not found → create new record → start Company Info Setup
+
+🔹 7️⃣ Post-Login: Company Details Setup (Step 2)
+
+Once login verified (manual or Google):
+
+Popup	Fields	Notes
+🧾 Popup 1 – Basic Info	Logo, Company Name, Type, Designation	Auto-save, required first
+📍 Popup 2 – Location Info	Address, Pincode, City, State, Country	Auto-detect via Google Maps API
+💼 Popup 3 – Business Info	No. of Employees, Annual Turnover, Year Established, Status	Final step
+✅	Show success animation → “Profile Completed Successfully”	
+🔹 8️⃣ Forgot Password (Manual Login Only)
+Step	Description
+1️⃣	User clicks “Forgot Password?”
+2️⃣	Enters registered email
+3️⃣	System sends reset link: https://worklogix.com/reset?token=xyz456
+4️⃣	User enters new password
+5️⃣	Password updated → success message displayed
+🔹 9️⃣ Database Structure (Simplified Overview)
+Table	Key Fields	Description
+users	id, full_name, email, password, google_id, company_id, verify_token, status	Core user data
+companies	id, company_name, company_type_id, address, location_id, turnover_id, status	Company info
+masters	type (company_type, designation, status)	Dropdown sources
+auth_tokens	token, expires_at	Email or reset tokens
+🔹 10️⃣ Final Flow Summary (Unified for Manual + Google Login)
+User → Register (Manual / Google)
+        ↓
+Validate Inputs
+        ↓
+Create Company ID + Token
+        ↓
+Send Verification Email (Manual only)
+        ↓
+Google Verified → Skip Email
+        ↓
+Click Verify Link → Status Active
+        ↓
+Login (Email/Password or Google)
+        ↓
+Fill Company Info Popups
+        ↓
+Dashboard Access
+
+🔐 Security Highlights
+
+Strong password validation (manual registration only).
+
+Google OAuth ensures real, verified emails.
+
+Token-based verification for manual users.
+
+All passwords encrypted using bcrypt/argon2.
+
+Verification and reset links expire automatically.
+
+API secured using JWT sessions.
