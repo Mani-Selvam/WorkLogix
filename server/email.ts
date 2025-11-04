@@ -8,12 +8,16 @@ function getEmailTransporter() {
     throw new Error('EMAIL_USER and EMAIL_PASS environment variables must be set');
   }
 
+  console.log(`[EMAIL] Creating transporter for: ${emailUser}`);
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: emailUser,
       pass: emailPass,
     },
+    debug: true,
+    logger: true,
   });
 }
 
@@ -314,6 +318,9 @@ export async function sendCompanyVerificationEmail(data: {
     const transporter = getEmailTransporter();
     const fromEmail = process.env.EMAIL_USER!;
     
+    console.log(`[EMAIL] Attempting to send verification email to: ${data.email}`);
+    console.log(`[EMAIL] From: ${fromEmail}`);
+    
     const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/verify?token=${data.verificationToken}`;
     
     const htmlContent = `
@@ -365,17 +372,24 @@ export async function sendCompanyVerificationEmail(data: {
       </div>
     `;
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"WorkLogix" <${fromEmail}>`,
       to: data.email,
       subject: `✅ Verify Your WorkLogix Registration - Company ID: ${data.serverId}`,
       html: htmlContent,
     });
 
-    console.log(`Verification email sent to ${data.email}`);
+    console.log(`[EMAIL] ✅ Verification email sent successfully!`);
+    console.log(`[EMAIL] Message ID: ${info.messageId}`);
+    console.log(`[EMAIL] Response: ${info.response}`);
+    console.log(`[EMAIL] Sent to: ${data.email}`);
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error('[EMAIL] ❌ Error sending verification email:', error);
+    if (error instanceof Error) {
+      console.error('[EMAIL] Error message:', error.message);
+      console.error('[EMAIL] Error stack:', error.stack);
+    }
     return false;
   }
 }
