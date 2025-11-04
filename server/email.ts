@@ -1,41 +1,20 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-let connectionSettings: any;
+function getEmailTransporter() {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
 
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  if (!emailUser || !emailPass) {
+    throw new Error('EMAIL_USER and EMAIL_PASS environment variables must be set');
   }
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
-  }
-  return {apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email};
-}
-
-async function getUncachableResendClient() {
-  const {apiKey, fromEmail} = await getCredentials();
-  return {
-    client: new Resend(apiKey),
-    fromEmail: fromEmail
-  };
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
 }
 
 export async function sendCompanyServerIdEmail(companyData: {
@@ -44,7 +23,8 @@ export async function sendCompanyServerIdEmail(companyData: {
   serverId: string;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
@@ -92,8 +72,8 @@ export async function sendCompanyServerIdEmail(companyData: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: companyData.companyEmail,
       subject: `✅ Company Registration Successful! - Company ID: ${companyData.serverId}`,
       html: htmlContent,
@@ -112,7 +92,8 @@ export async function sendUserIdEmail(userData: {
   role: string;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -142,8 +123,8 @@ export async function sendUserIdEmail(userData: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: userData.userEmail,
       subject: `WorkLogix - Your User ID: ${userData.uniqueUserId}`,
       html: htmlContent,
@@ -161,7 +142,8 @@ export async function sendPasswordResetEmail(data: {
   userName?: string;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const resetUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/reset-password?token=${data.resetToken}`;
     
@@ -210,8 +192,8 @@ export async function sendPasswordResetEmail(data: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: data.email,
       subject: '🔐 Reset Your WorkLogix Password',
       html: htmlContent,
@@ -235,7 +217,8 @@ export async function sendPaymentConfirmationEmail(paymentData: {
   paymentDate: Date;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const currencySymbol = paymentData.currency === 'INR' ? '₹' : '$';
     const slotTypeLabel = paymentData.slotType === 'admin' ? 'Admin' : 'Member';
@@ -306,8 +289,8 @@ export async function sendPaymentConfirmationEmail(paymentData: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: paymentData.companyEmail,
       subject: `Payment Receipt - ${paymentData.receiptNumber} | WorkLogix`,
       html: htmlContent,
@@ -328,7 +311,8 @@ export async function sendCompanyVerificationEmail(data: {
   verificationToken: string;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/verify?token=${data.verificationToken}`;
     
@@ -381,8 +365,8 @@ export async function sendCompanyVerificationEmail(data: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: data.email,
       subject: `✅ Verify Your WorkLogix Registration - Company ID: ${data.serverId}`,
       html: htmlContent,
@@ -406,7 +390,8 @@ export async function sendReportNotification(reportData: {
   createdAt: Date;
 }) {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const transporter = getEmailTransporter();
+    const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -445,8 +430,8 @@ export async function sendReportNotification(reportData: {
       </div>
     `;
 
-    await client.emails.send({
-      from: fromEmail,
+    await transporter.sendMail({
+      from: `"WorkLogix" <${fromEmail}>`,
       to: 'maniselvam2023@gmail.com',
       subject: `New ${reportData.reportType.charAt(0).toUpperCase() + reportData.reportType.slice(1)} Report - ${reportData.userName}`,
       html: htmlContent,
