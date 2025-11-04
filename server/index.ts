@@ -4,11 +4,29 @@ import { setupVite, serveStatic, log } from "./vite";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
+import session from "express-session";
+import passport from "./passport";
 import dotenv from "dotenv";
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'worklogix-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 export let broadcast: (message: any) => void;
 

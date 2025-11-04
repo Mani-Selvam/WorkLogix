@@ -2,12 +2,13 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, companyBasicRegistrationSchema, companyGoogleRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, companyRegistrationSchema, companyBasicRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail, sendCompanyVerificationEmail } from "./email";
 import crypto from "crypto";
 import Stripe from "stripe";
+import passport from "passport";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -257,55 +258,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Company Google Registration
-  app.post("/api/auth/register-company-google", async (req, res, next) => {
-    try {
-      const validatedData = companyGoogleRegistrationSchema.parse(req.body);
-      
-      const existingCompany = await storage.getCompanyByEmail(validatedData.email);
-      if (existingCompany) {
-        return res.status(400).json({ message: "A company with this email already exists" });
+  // Google OAuth - Initiate
+  app.get("/api/auth/google", passport.authenticate('google', { 
+    scope: ['profile', 'email'] 
+  }));
+
+  // Google OAuth - Callback
+  app.get("/api/auth/google/callback", 
+    passport.authenticate('google', { failureRedirect: '/?error=google_auth_failed', session: false }),
+    async (req, res, next) => {
+      try {
+        const googleUser = req.user as any;
+        
+        if (!googleUser || !googleUser.email) {
+          return res.redirect('/?error=no_email');
+        }
+
+        const existingCompany = await storage.getCompanyByEmail(googleUser.email);
+        if (existingCompany) {
+          return res.redirect(`/?error=company_exists&email=${encodeURIComponent(googleUser.email)}`);
+        }
+
+        const company = await storage.createCompany({
+          name: googleUser.displayName || googleUser.email.split('@')[0],
+          email: googleUser.email,
+          password: '',
+          contactPerson: googleUser.displayName || googleUser.email.split('@')[0],
+          logo: googleUser.photoURL,
+          emailVerified: true,
+        });
+
+        const admin = await storage.createUser({
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+          googleId: googleUser.googleId,
+          photoURL: googleUser.photoURL,
+          role: 'company_admin',
+          companyId: company.id,
+        });
+
+        await sendCompanyServerIdEmail({
+          companyName: company.name,
+          companyEmail: company.email,
+          serverId: company.serverId,
+        });
+
+        res.redirect(`/?success=true&serverId=${company.serverId}&email=${encodeURIComponent(company.email)}`);
+      } catch (error) {
+        console.error('Google OAuth callback error:', error);
+        res.redirect('/?error=registration_failed');
       }
-      
-      const company = await storage.createCompany({
-        name: validatedData.companyName,
-        email: validatedData.email,
-        password: '',
-        contactPerson: validatedData.companyName,
-        logo: validatedData.photoURL,
-        emailVerified: true,
-      });
-      
-      const admin = await storage.createUser({
-        email: validatedData.email,
-        displayName: validatedData.companyName,
-        firebaseUid: validatedData.firebaseUid,
-        photoURL: validatedData.photoURL,
-        role: 'company_admin',
-        companyId: company.id,
-      });
-      
-      await sendCompanyServerIdEmail({
-        companyName: company.name,
-        companyEmail: company.email,
-        serverId: company.serverId,
-      });
-      
-      const { password: _, ...companyWithoutPassword } = company;
-      const { password: __, ...adminWithoutPassword } = admin;
-      
-      res.json({ 
-        company: companyWithoutPassword,
-        user: adminWithoutPassword,
-        message: `Registration successful! Your Company Server ID is ${company.serverId}. An email has been sent to ${company.email}.`
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      next(error);
     }
-  });
+  );
 
   // Verify Company Email
   app.get("/api/auth/verify-company", async (req, res, next) => {
