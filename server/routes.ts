@@ -163,15 +163,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
       
       const company = await storage.createCompany({
         name: validatedData.name,
         email: validatedData.email,
         password: hashedPassword,
-        phone: validatedData.phone,
+        phone: validatedData.mobile,
         website: validatedData.website,
-        location: validatedData.location,
+        location: validatedData.country,
         description: validatedData.description,
+        
+        companyType: validatedData.companyType,
+        contactPerson: validatedData.contactPerson,
+        designation: validatedData.designation,
+        mobile: validatedData.mobile,
+        
+        address: validatedData.address,
+        pincode: validatedData.pincode,
+        city: validatedData.city,
+        state: validatedData.state,
+        country: validatedData.country,
+        
+        employees: validatedData.employees,
+        annualTurnover: validatedData.annualTurnover,
+        yearEstablished: validatedData.yearEstablished,
+        logo: validatedData.logo,
+        
+        verificationToken,
+        emailVerified: false,
       });
       
       await sendCompanyServerIdEmail({
@@ -2106,24 +2126,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password Reset routes
-  app.post("/api/auth/request-password-reset", async (req, res, next) => {
+  const handlePasswordResetRequest = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
       const validatedData = passwordResetRequestSchema.parse(req.body);
       
       const user = await storage.getUserByEmail(validatedData.email);
-      if (!user) {
+      const company = await storage.getCompanyByEmail(validatedData.email);
+      
+      if (!user && !company) {
         return res.json({ message: "If an account exists with this email, a password reset link has been sent." });
       }
       
       const resetToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
       
       await storage.createPasswordResetToken(validatedData.email, resetToken, expiresAt);
       
       await sendPasswordResetEmail({
         email: validatedData.email,
         resetToken,
-        userName: user.displayName,
+        userName: user?.displayName || company?.name || 'User',
       });
       
       res.json({ message: "If an account exists with this email, a password reset link has been sent." });
@@ -2133,7 +2155,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       next(error);
     }
-  });
+  };
+  
+  app.post("/api/auth/request-password-reset", handlePasswordResetRequest);
+  app.post("/api/auth/forgot-password", handlePasswordResetRequest);
 
   app.post("/api/auth/reset-password", async (req, res, next) => {
     try {
@@ -2154,16 +2179,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.getUserByEmail(tokenData.email);
-      if (!user) {
-        return res.status(400).json({ message: "User not found" });
+      const company = await storage.getCompanyByEmail(tokenData.email);
+      
+      if (!user && !company) {
+        return res.status(400).json({ message: "Account not found" });
       }
       
       const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
       
-      await storage.updateUserPassword(user.id, hashedPassword);
+      if (user) {
+        await storage.updateUserPassword(user.id, hashedPassword);
+        
+        if (user.role === 'company_admin' && user.companyId) {
+          await storage.updateCompany(user.companyId, { password: hashedPassword });
+        }
+      }
       
-      if (user.role === 'company_admin' && user.companyId) {
-        await storage.updateCompany(user.companyId, { password: hashedPassword });
+      if (company) {
+        await storage.updateCompany(company.id, { password: hashedPassword });
       }
       
       await storage.markTokenAsUsed(validatedData.token);

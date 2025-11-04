@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import loginHeroImage from "@assets/stock_images/workspace_desk_lapto_4a3916c9.jpg";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldCheck } from "lucide-react";
+import MultiStepRegistrationForm from "@/components/MultiStepRegistrationForm";
 
 export default function LoginPage() {
   const { user, userRole, setUser, setUserRole, setDbUserId, setCompanyId } = useAuth();
@@ -171,121 +172,7 @@ export default function LoginPage() {
             <p className="text-sm sm:text-base text-muted-foreground">Employee Work Tracking & Task Management</p>
           </div>
 
-{formType === 'register' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Register Your Company</CardTitle>
-                <CardDescription>Get your unique Company Server ID</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCompanyRegistration} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="company-name">Company Name</Label>
-                    <Input
-                      id="company-name"
-                      type="text"
-                      placeholder="Acme Inc"
-                      value={companyRegData.name}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, name: e.target.value })}
-                      required
-                      data-testid="input-company-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-email">Company Email</Label>
-                    <Input
-                      id="company-email"
-                      type="email"
-                      placeholder="admin@company.com"
-                      value={companyRegData.email}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, email: e.target.value })}
-                      required
-                      data-testid="input-company-email"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-password">Password</Label>
-                    <Input
-                      id="company-password"
-                      type="password"
-                      value={companyRegData.password}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, password: e.target.value })}
-                      required
-                      data-testid="input-company-password"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-phone">Phone Number <span className="text-muted-foreground text-xs">(Optional)</span></Label>
-                    <Input
-                      id="company-phone"
-                      type="tel"
-                      placeholder="+91 9876543210"
-                      value={companyRegData.phone}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, phone: e.target.value })}
-                      data-testid="input-company-phone"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-website">Company Website <span className="text-muted-foreground text-xs">(Optional)</span></Label>
-                    <Input
-                      id="company-website"
-                      type="url"
-                      placeholder="https://yourcompany.com"
-                      value={companyRegData.website}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, website: e.target.value })}
-                      data-testid="input-company-website"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-location">Location / Country <span className="text-muted-foreground text-xs">(Optional)</span></Label>
-                    <Input
-                      id="company-location"
-                      type="text"
-                      placeholder="India"
-                      value={companyRegData.location}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, location: e.target.value })}
-                      data-testid="input-company-location"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-description">Company Description <span className="text-muted-foreground text-xs">(Optional)</span></Label>
-                    <Textarea
-                      id="company-description"
-                      placeholder="We provide SaaS solutions for startups..."
-                      value={companyRegData.description}
-                      onChange={(e) => setCompanyRegData({ ...companyRegData, description: e.target.value })}
-                      rows={3}
-                      data-testid="input-company-description"
-                    />
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="accept-terms"
-                      checked={companyRegData.acceptTerms}
-                      onCheckedChange={(checked) => setCompanyRegData({ ...companyRegData, acceptTerms: checked as boolean })}
-                      data-testid="checkbox-accept-terms"
-                    />
-                    <Label htmlFor="accept-terms" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      I accept the{" "}
-                      <a href="#" className="text-primary hover:underline" data-testid="link-terms">
-                        Terms & Conditions
-                      </a>
-                    </Label>
-                  </div>
-                  {error && <p className="text-sm text-red-500" data-testid="error-message">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-register-company">
-                    {isLoading ? "Registering..." : "Register Company"}
-                  </Button>
-                  <div className="text-center text-sm text-muted-foreground">
-                    Already have an account?{" "}
-                    <Link href="/login/admin" className="text-primary hover:underline" data-testid="link-to-admin-login">
-                      Company Admin Login
-                    </Link>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
+{formType === 'register' && <MultiStepRegistrationForm />}
 
           {formType === 'admin' && (
             <Card>
@@ -332,7 +219,12 @@ export default function LoginPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="admin-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="admin-password">Password</Label>
+                      <Link href="/forgot-password" className="text-xs text-primary hover:underline" data-testid="link-forgot-password">
+                        Forgot Password?
+                      </Link>
+                    </div>
                     <Input
                       id="admin-password"
                       type="password"
@@ -390,7 +282,12 @@ export default function LoginPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="user-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="user-password">Password</Label>
+                      <Link href="/forgot-password" className="text-xs text-primary hover:underline" data-testid="link-forgot-password-user">
+                        Forgot Password?
+                      </Link>
+                    </div>
                     <Input
                       id="user-password"
                       type="password"

@@ -13,6 +13,26 @@ export const companies = pgTable("companies", {
   website: text("website"),
   location: varchar("location", { length: 100 }),
   description: text("description"),
+  
+  companyType: varchar("company_type", { length: 50 }),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  designation: varchar("designation", { length: 100 }),
+  mobile: varchar("mobile", { length: 20 }),
+  
+  address: text("address"),
+  pincode: varchar("pincode", { length: 10 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  country: varchar("country", { length: 100 }),
+  
+  employees: integer("employees"),
+  annualTurnover: varchar("annual_turnover", { length: 50 }),
+  yearEstablished: integer("year_established"),
+  logo: text("logo"),
+  
+  verificationToken: varchar("verification_token", { length: 255 }),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  
   maxAdmins: integer("max_admins").notNull().default(1),
   maxMembers: integer("max_members").notNull().default(10),
   isActive: boolean("is_active").notNull().default(true),
@@ -207,17 +227,43 @@ export const firebaseSigninSchema = z.object({
   firebaseUid: z.string().min(1, "Firebase UID is required"),
 });
 
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 export const companyRegistrationSchema = z.object({
-  name: z.string().min(2, "Company name must be at least 2 characters"),
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  phone: z.string().optional(),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(strongPasswordRegex, "Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character (@$!%*?&)"),
+  confirmPassword: z.string(),
+  
+  name: z.string().min(2, "Company name must be at least 2 characters"),
+  companyType: z.string().min(1, "Please select a company type"),
+  contactPerson: z.string().min(2, "Contact person name is required"),
+  designation: z.string().min(1, "Please select a designation"),
+  mobile: z.string().regex(/^\d{10}$/, "Please enter a valid 10-digit mobile number"),
   website: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-  location: z.string().optional(),
+  
+  address: z.string().min(5, "Please enter a complete address"),
+  pincode: z.string().regex(/^\d{6}$/, "Please enter a valid 6-digit pincode"),
+  city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
+  country: z.string().min(2, "Country is required"),
+  
+  employees: z.number().min(1, "Number of employees must be at least 1"),
+  annualTurnover: z.string().min(1, "Please select annual turnover range"),
+  yearEstablished: z.number()
+    .min(1800, "Year must be valid")
+    .max(new Date().getFullYear(), "Year cannot be in the future"),
   description: z.string().optional(),
+  logo: z.string().optional(),
+  
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms and conditions" }),
   }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export const superAdminLoginSchema = z.object({

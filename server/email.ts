@@ -47,34 +47,55 @@ export async function sendCompanyServerIdEmail(companyData: {
     const { client, fromEmail } = await getUncachableResendClient();
     
     const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Welcome to WorkLogix!</h2>
-        <p>Dear ${companyData.companyName},</p>
-        <p>Your company has been successfully registered on WorkLogix.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0;">
-          <h3 style="color: #333; margin-top: 0;">Your Company Server ID:</h3>
-          <p style="font-size: 24px; font-weight: bold; color: #4CAF50; margin: 10px 0;">${companyData.serverId}</p>
-          <p style="color: #666; font-size: 14px; margin: 5px 0;">⚠️ Please save this ID securely. You will need it to log in to your company admin portal.</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">✅ Company Registration Successful!</h1>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${companyData.companyName}</strong>,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">Your company registration was successful! Welcome to WorkLogix - your centralized system for managing teams, slots, and activities.</p>
+          
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 14px; margin: 0 0 10px 0; opacity: 0.9;">Your Company Server ID:</p>
+            <p style="font-size: 32px; font-weight: bold; color: white; margin: 0; letter-spacing: 2px;">${companyData.serverId}</p>
+          </div>
+          
+          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="color: #92400E; font-size: 14px; margin: 0;">
+              <strong>⚠️ Important Security Notice:</strong><br/>
+              Please save your Company Server ID securely. You will need it to log in to your admin portal along with your email and password.
+            </p>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #333; margin-top: 0; font-size: 16px;">🚀 How to Access Your Dashboard:</h3>
+            <ol style="color: #666; font-size: 14px; line-height: 1.8; margin: 10px 0;">
+              <li>Go to the WorkLogix login page</li>
+              <li>Select <strong>"Company Admin"</strong> tab</li>
+              <li>Enter your company name, email, server ID, and password</li>
+              <li>Start managing your team!</li>
+            </ol>
+          </div>
+          
+          <div style="background-color: #E0E7FF; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="color: #3730A3; font-size: 13px; margin: 0;">
+              <strong>💼 Free Plan Includes:</strong> Manage up to 10 users at no cost. Additional user slots can be purchased from your dashboard as your team grows.
+            </p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Best regards,<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated message. Please do not reply to this email.</p>
         </div>
-        
-        <p>To access your company admin dashboard:</p>
-        <ol>
-          <li>Go to the WorkLogix login page</li>
-          <li>Select "Company Admin" tab</li>
-          <li>Enter your company name, email, server ID, and password</li>
-        </ol>
-        
-        <p style="color: #666; font-size: 14px; margin-top: 30px;">Note: You can manage up to 10 users for free. Additional user slots can be purchased from your dashboard.</p>
-        
-        <p>Best regards,<br/>The WorkLogix Team</p>
       </div>
     `;
 
     await client.emails.send({
       from: fromEmail,
       to: companyData.companyEmail,
-      subject: `WorkLogix - Your Company Server ID: ${companyData.serverId}`,
+      subject: `✅ Company Registration Successful! - Company ID: ${companyData.serverId}`,
       html: htmlContent,
     });
 
@@ -145,28 +166,54 @@ export async function sendPasswordResetEmail(data: {
     const resetUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/reset-password?token=${data.resetToken}`;
     
     const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Password Reset Request</h2>
-        <p>Dear ${data.userName || 'User'},</p>
-        <p>We received a request to reset your password for your WorkLogix account.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #FF9800; padding: 15px; margin: 20px 0;">
-          <p style="color: #666; font-size: 14px; margin: 5px 0;">Click the button below to reset your password:</p>
-          <a href="${resetUrl}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; margin: 10px 0;">Reset Password</a>
-          <p style="color: #999; font-size: 12px; margin: 10px 0;">Or copy this link: ${resetUrl}</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #DC2626; margin: 0;">🔐 Reset Your WorkLogix Password</h1>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${data.userName || 'User'}</strong>,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">You requested a password reset for your WorkLogix account.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              👉 Reset Your Password
+            </a>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="color: #6B7280; font-size: 12px; margin: 0; word-break: break-all;">
+              <strong>Or copy this secure link:</strong><br/>
+              ${resetUrl}
+            </p>
+          </div>
+          
+          <div style="background-color: #FEE2E2; border-left: 4px solid #DC2626; padding: 15px; margin: 25px 0; border-radius: 4px;">
+            <p style="color: #991B1B; font-size: 14px; margin: 0;">
+              <strong>⏰ Security Notice:</strong><br/>
+              This link expires in <strong>15 minutes</strong> for your security. If you didn't request this password reset, please ignore this email and your password will remain unchanged.
+            </p>
+          </div>
+          
+          <div style="background-color: #E0F2FE; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="color: #075985; font-size: 13px; margin: 0;">
+              <strong>🛡️ Password Requirements:</strong><br/>
+              Your new password must contain at least 8 characters, including uppercase, lowercase, numbers, and special characters (@$!%*?&).
+            </p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Best regards,<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated security message. Please do not reply to this email.</p>
         </div>
-        
-        <p style="color: #666; font-size: 14px;">⚠️ This link will expire in 1 hour for security purposes.</p>
-        <p style="color: #666; font-size: 14px;">If you didn't request this password reset, please ignore this email.</p>
-        
-        <p>Best regards,<br/>The WorkLogix Team</p>
       </div>
     `;
 
     await client.emails.send({
       from: fromEmail,
       to: data.email,
-      subject: 'WorkLogix - Password Reset Request',
+      subject: '🔐 Reset Your WorkLogix Password',
       html: htmlContent,
     });
 

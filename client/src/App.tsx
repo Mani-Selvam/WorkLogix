@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/components/LoginPage";
 import SuperAdminLogin from "@/pages/SuperAdminLogin";
+import ForgotPasswordPage from "@/components/ForgotPasswordPage";
+import ResetPasswordPage from "@/components/ResetPasswordPage";
 import UserLayout from "@/components/UserLayout";
 import AdminLayout from "@/components/AdminLayout";
 import Overview from "@/pages/user/Overview";
@@ -83,6 +85,8 @@ function Router() {
       <Route path="/login/admin" component={LoginPage} />
       <Route path="/login/user" component={LoginPage} />
       <Route path="/login/company" component={() => <Redirect to="/login/admin" />} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/superadmin" component={SuperAdminLogin} />
       <Route path="/user/overview">
         {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}
