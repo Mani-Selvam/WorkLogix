@@ -1,0 +1,194 @@
+WorkLogix – Secure Registration & Login Flow (Final Structure - Updated)
+🔹 1️⃣ User Registration Form (Step 1 – Account Creation)
+Fields:
+
+Company Name (required)
+
+Email Address (required – must be valid Google/business email)
+
+Password (required – strong password rule)
+
+Confirm Password (must match)
+
+Checkbox → “I accept Terms & Conditions”
+
+Button → Submit
+
+Password Rules:
+
+Minimum 8 characters
+
+At least 1 uppercase letter
+
+At least 1 lowercase letter
+
+At least 1 number
+
+At least 1 special character
+
+UI Behavior:
+
+“Next” button removed → only one Submit
+
+Password strength meter: Weak / Medium / Strong
+
+Client-side validation before submit
+
+🔹 2️⃣ Backend Registration Process
+Step	Description
+1️⃣	Validate all input fields (email, password strength, confirm password)
+2️⃣	Check if the email is already registered
+3️⃣	Generate unique Company ID → CMP-XYZ123
+4️⃣	Create a Verification Token (UUID/JWT)
+5️⃣	Save company record → status = Pending Verification
+6️⃣	Send Verification Email to registered address
+🔹 3️⃣ Verification Email (Auto-Generated Mail)
+
+Subject: ✅ Company Registration Successful!
+
+Body Example:
+
+Hello [Company Name],
+
+Your company registration was successful.
+
+Your Unique Company Server ID: CMP-XYZ123
+
+Please confirm your registration by clicking the secure link below:
+👉 https://worklogix.com/verify?token=abc123
+
+After confirmation, you can log in to your company dashboard.
+
+Thank you,
+The WorkLogix Team
+
+Logic:
+
+Unique token & company ID per registration
+
+Verification link expires after 24 hours
+
+Clicking link → activates account
+
+🔹 4️⃣ Email Verification Step
+Step	Process
+✅	Backend verifies token validity
+🔁	Status updated: Pending → Active
+📦	verify_token cleared from database
+🎯	Redirect to Admin Login Page with success message
+
+🧩 Optional:
+Show animation → “🎉 Verification Successful! You can now log in.”
+
+🔹 5️⃣ Login Flow (After Verification)
+Fields:
+
+Email
+
+Password
+
+Company Server ID
+
+“Forgot Password?” link
+
+✅ Successful login → redirect to Company Info Setup (popup form)
+
+🔹 6️⃣ Post-Login: Company Details Setup (Step 2 – Company Profile)
+
+After successful login → show 3-step popup form.
+
+🧾 Popup 1: Basic Company Info
+
+Company Name
+
+Company Type (Contractor / Builder / Developer / Supplier)
+
+Logo Upload
+
+Designation (Owner / Manager / Engineer)
+
+📍 Popup 2: Address & Location Info
+
+Address
+
+Pincode
+
+City
+
+State
+
+Country (Auto-detect using Google Maps API)
+
+💼 Popup 3: Business Details
+
+Number of Employees
+
+Average Annual Turnover (dropdown)
+
+Year Established
+
+Status (Active / Inactive)
+
+Auto Fields → Created By, Created Date, Updated By, Updated Date
+
+✅ Each popup auto-saves on “Next”
+✅ After final step → “🎉 Profile Completed Successfully”
+
+🔹 7️⃣ Forgot Password / Company ID Reset Flow
+
+If user clicks “Forgot Password?” on login:
+
+Step	Description
+1️⃣	User enters registered email
+2️⃣	System sends reset email with secure token
+3️⃣	User clicks link → opens Reset Password / Company ID page
+4️⃣	User enters new password + confirm password or updates company ID
+5️⃣	System updates password / company ID → shows success message
+Email Subjects:
+
+Password Reset: 🔑 Reset Your WorkLogix Password
+
+Company ID Reset: 🆔 Reset Your WorkLogix Company ID
+
+Verification Link Example:
+https://worklogix.com/reset?token=abc123
+
+🔹 8️⃣ Database Tracking
+Column	Description
+id	Primary Key
+company_name	Registered company name
+email	Unique login email
+password	Encrypted (bcrypt / argon2)
+company_id	Generated unique company ID
+verify_token	Token for email verification
+status	Pending / Active
+created_at	Timestamp
+updated_at	Timestamp
+🔹 9️⃣ Summary – Visual Flow
+User → Fill Registration Form
+      ↓
+Click Submit
+      ↓
+Backend Saves Data + Sends Verification Email
+      ↓
+User Clicks Verification Link
+      ↓
+Account Activated → Redirect to Login
+      ↓
+Login with Email + Password + Company ID
+      ↓
+Fill Company Profile Popups
+      ↓
+Profile Completed → Dashboard Access
+
+🔐 Security Highlights
+
+Strong password validation (frontend + backend)
+
+Encrypted password storage (bcrypt / argon2)
+
+Token-based verification with expiry (24h)
+
+Secure reset-password and company ID system
+
+Dashboard locked until verification complet
