@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -15,7 +15,8 @@ import {
   Mail,
   Phone,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,9 +24,54 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ serverId: string; email: string } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    const error = params.get('error');
+    const serverId = params.get('serverId');
+    const email = params.get('email');
+
+    if (success === 'true' && serverId && email) {
+      setSuccessInfo({ serverId, email });
+      setShowSuccessDialog(true);
+      window.history.replaceState({}, '', '/');
+    } else if (error) {
+      let errorMessage = 'An error occurred during registration';
+      
+      if (error === 'google_auth_failed') {
+        errorMessage = 'Google authentication failed. Please try again.';
+      } else if (error === 'no_email') {
+        errorMessage = 'No email found in Google account. Please use an account with an email.';
+      } else if (error === 'company_exists') {
+        errorMessage = 'A company with this email already exists. Please login instead.';
+      } else if (error === 'registration_failed') {
+        errorMessage = 'Company registration failed. Please try again.';
+      }
+
+      toast({
+        title: "Registration Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/');
+    }
+  }, [toast]);
 
   const features = [
     {
@@ -486,6 +532,63 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="text-center text-2xl">Registration Successful!</DialogTitle>
+            <DialogDescription className="text-center">
+              Your company has been registered successfully with Google
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-center">
+              <p className="text-white text-sm mb-2 opacity-90">Your Company Server ID</p>
+              <p className="text-white text-3xl font-bold tracking-wider" data-testid="text-server-id">
+                {successInfo?.serverId}
+              </p>
+            </div>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4 rounded">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-500 mb-1">Important!</p>
+                  <p className="text-yellow-700 dark:text-yellow-400">
+                    Please save your Company Server ID. You will need it to log in along with your email.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded">
+              <div className="flex items-start gap-2">
+                <Mail className="h-5 w-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold text-blue-800 dark:text-blue-500 mb-1">Check Your Email</p>
+                  <p className="text-blue-700 dark:text-blue-400">
+                    We've sent your Server ID to <strong>{successInfo?.email}</strong> for your records.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                setLocation("/login/admin");
+              }}
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              data-testid="button-go-to-login"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

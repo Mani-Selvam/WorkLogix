@@ -11,8 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
 const registrationSchema = z.object({
@@ -37,7 +35,6 @@ export default function CompanyRegistration() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [serverIdInfo, setServerIdInfo] = useState<{ serverId: string; email: string } | null>(null);
 
@@ -100,46 +97,8 @@ export default function CompanyRegistration() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!auth || !googleProvider || !isFirebaseConfigured) {
-      toast({
-        title: "Google Sign-In Unavailable",
-        description: "Google authentication is not configured",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setIsGoogleLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      const res = await apiRequest("POST", "/api/auth/register-company-google", {
-        companyName: user.displayName || user.email?.split('@')[0] || 'Company',
-        email: user.email,
-        firebaseUid: user.uid,
-        photoURL: user.photoURL,
-        acceptTerms: true,
-      });
-      const response = await res.json();
-
-      toast({
-        title: "Registration Successful!",
-        description: `Your Company Server ID is ${response.company.serverId}. Welcome to WorkLogix!`,
-      });
-
-      setServerIdInfo({ serverId: response.company.serverId, email: response.company.email });
-      setRegistrationSuccess(true);
-    } catch (error: any) {
-      toast({
-        title: "Google Sign-In Failed",
-        description: error.message || "An error occurred during Google sign-in",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
+  const handleGoogleSignIn = () => {
+    window.location.href = '/api/auth/google';
   };
 
   if (registrationSuccess && serverIdInfo) {
@@ -208,34 +167,26 @@ export default function CompanyRegistration() {
           <CardDescription>Get your unique Company Server ID</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {isFirebaseConfigured && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading || isLoading}
-                data-testid="button-google-register"
-              >
-                {isGoogleLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <SiGoogle className="h-5 w-5" />
-                )}
-                Register with Google
-              </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            data-testid="button-google-register"
+          >
+            <SiGoogle className="h-5 w-5" />
+            Register with Google
+          </Button>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -364,7 +315,7 @@ export default function CompanyRegistration() {
               <Button 
                 type="submit" 
                 className="w-full bg-indigo-600 hover:bg-indigo-700"
-                disabled={isLoading || isGoogleLoading}
+                disabled={isLoading}
                 data-testid="button-submit"
               >
                 {isLoading ? (

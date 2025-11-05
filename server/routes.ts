@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, companyRegistrationSchema, companyBasicRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, companyBasicRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail, sendCompanyVerificationEmail } from "./email";
@@ -291,7 +291,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const admin = await storage.createUser({
           email: googleUser.email,
           displayName: googleUser.displayName,
-          googleId: googleUser.googleId,
           photoURL: googleUser.photoURL,
           role: 'company_admin',
           companyId: company.id,
