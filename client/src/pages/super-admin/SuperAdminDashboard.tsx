@@ -26,6 +26,7 @@ import {
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Company } from "@shared/schema";
+import CompanyDetailsModal from "@/components/CompanyDetailsModal";
 
 interface CompanyWithStats {
   company: Company;
@@ -51,6 +52,8 @@ export default function SuperAdminDashboard() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "suspended">("all");
   const [selectedCompany, setSelectedCompany] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedCompanyForDetails, setSelectedCompanyForDetails] = useState<any>(null);
   const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -70,6 +73,16 @@ export default function SuperAdminDashboard() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleViewDetails = (companyData: CompanyWithStats) => {
+    const fullCompanyData = {
+      ...companyData.company,
+      currentAdmins: companyData.adminCount,
+      currentMembers: companyData.memberCount,
+    };
+    setSelectedCompanyForDetails(fullCompanyData);
+    setShowDetailsModal(true);
   };
 
   const { data: companiesWithStats = [], isLoading: loadingCompanies } = useQuery<CompanyWithStats[]>({
@@ -285,7 +298,7 @@ export default function SuperAdminDashboard() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => console.log('View details', company.id)} data-testid={`menu-view-${company.id}`}>
+                        <DropdownMenuItem onClick={() => handleViewDetails({ company, userCount, adminCount, memberCount })} data-testid={`menu-view-${company.id}`}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
@@ -374,6 +387,18 @@ export default function SuperAdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CompanyDetailsModal
+        company={selectedCompanyForDetails}
+        open={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        onSuspend={(companyId) => suspendMutation.mutate(companyId)}
+        onReactivate={(companyId) => reactivateMutation.mutate(companyId)}
+        onDelete={(companyId) => {
+          setSelectedCompany(companyId);
+          setShowDeleteDialog(true);
+        }}
+      />
     </div>
   );
 }
