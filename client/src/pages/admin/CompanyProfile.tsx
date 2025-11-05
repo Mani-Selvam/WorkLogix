@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -111,24 +111,48 @@ export default function CompanyProfile() {
   const form = useForm<CompanyProfileFormData>({
     resolver: zodResolver(companyProfileSchema),
     defaultValues: {
-      companyType: company?.companyType || "",
-      contactPerson: company?.contactPerson || "",
-      designation: company?.designation || "",
-      mobile: company?.mobile || "",
-      phone: company?.phone || "",
-      website: company?.website || "",
-      address: company?.address || "",
-      pincode: company?.pincode || "",
-      city: company?.city || "",
-      state: company?.state || "",
-      country: company?.country || "India",
-      employees: company?.employees?.toString() || "",
-      annualTurnover: company?.annualTurnover || "",
-      yearEstablished: company?.yearEstablished?.toString() || "",
-      description: company?.description || "",
-      logo: company?.logo || "",
+      companyType: "",
+      contactPerson: "",
+      designation: "",
+      mobile: "",
+      phone: "",
+      website: "",
+      address: "",
+      pincode: "",
+      city: "",
+      state: "",
+      country: "India",
+      employees: "",
+      annualTurnover: "",
+      yearEstablished: "",
+      description: "",
+      logo: "",
     },
   });
+
+  // Reset form when company data loads
+  useEffect(() => {
+    if (company) {
+      form.reset({
+        companyType: company.companyType || "",
+        contactPerson: company.contactPerson || "",
+        designation: company.designation || "",
+        mobile: company.mobile || "",
+        phone: company.phone || "",
+        website: company.website || "",
+        address: company.address || "",
+        pincode: company.pincode || "",
+        city: company.city || "",
+        state: company.state || "",
+        country: company.country || "India",
+        employees: company.employees?.toString() || "",
+        annualTurnover: company.annualTurnover || "",
+        yearEstablished: company.yearEstablished?.toString() || "",
+        description: company.description || "",
+        logo: company.logo || "",
+      });
+    }
+  }, [company, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: CompanyProfileFormData) => {
