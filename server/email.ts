@@ -5,7 +5,8 @@ function getEmailTransporter() {
   const emailPass = process.env.EMAIL_PASS;
 
   if (!emailUser || !emailPass) {
-    throw new Error('EMAIL_USER and EMAIL_PASS environment variables must be set');
+    console.warn('[EMAIL] EMAIL_USER and EMAIL_PASS not configured - emails will be skipped');
+    return null;
   }
 
   console.log(`[EMAIL] Creating transporter for: ${emailUser}`);
@@ -28,6 +29,10 @@ export async function sendCompanyServerIdEmail(companyData: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping company server ID email - email not configured');
+      return;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
@@ -97,6 +102,10 @@ export async function sendUserIdEmail(userData: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping user ID email - email not configured');
+      return;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
@@ -147,6 +156,10 @@ export async function sendPasswordResetEmail(data: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping password reset email - email not configured');
+      return;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     const resetUrl = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/reset-password?token=${data.resetToken}`;
@@ -222,6 +235,10 @@ export async function sendPaymentConfirmationEmail(paymentData: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping payment confirmation email - email not configured');
+      return false;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     const currencySymbol = paymentData.currency === 'INR' ? '₹' : '$';
@@ -316,6 +333,10 @@ export async function sendCompanyVerificationEmail(data: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping verification email - email not configured');
+      return false;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     console.log(`[EMAIL] Attempting to send verification email to: ${data.email}`);
@@ -406,6 +427,10 @@ export async function sendReportNotification(reportData: {
 }) {
   try {
     const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping report notification - email not configured');
+      return;
+    }
     const fromEmail = process.env.EMAIL_USER!;
     
     const htmlContent = `
@@ -455,5 +480,181 @@ export async function sendReportNotification(reportData: {
     console.log(`Email sent successfully for ${reportData.reportType} report by ${reportData.userName} to ${reportData.adminEmail}`);
   } catch (error) {
     console.error('Error sending email:', error);
+  }
+}
+
+export async function sendDailyAttendanceSummary(attendanceData: {
+  userName: string;
+  userEmail: string;
+  status: string;
+  loginTime: string;
+  totalHours: number;
+  pointsEarned: number;
+  currentStreak: number;
+  totalPoints: number;
+}) {
+  try {
+    const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping daily attendance summary - email not configured');
+      return;
+    }
+    const fromEmail = process.env.EMAIL_USER!;
+    
+    const statusEmoji = attendanceData.status === 'present' ? '✅' : attendanceData.status === 'late' ? '⚠️' : '❌';
+    const statusColor = attendanceData.status === 'present' ? '#10B981' : attendanceData.status === 'late' ? '#F59E0B' : '#EF4444';
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">📊 Daily Attendance Summary</h1>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${attendanceData.userName}</strong>,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">Here's your attendance summary for today:</p>
+          
+          <div style="background: ${statusColor}; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 14px; margin: 0 0 10px 0; opacity: 0.9;">Today's Status:</p>
+            <p style="font-size: 32px; font-weight: bold; color: white; margin: 0;">${statusEmoji} ${attendanceData.status.toUpperCase()}</p>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Login Time:</td>
+                <td style="padding: 10px; color: #333; font-size: 14px; font-weight: bold; text-align: right;">${attendanceData.loginTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Total Hours:</td>
+                <td style="padding: 10px; color: #333; font-size: 14px; font-weight: bold; text-align: right;">${attendanceData.totalHours} hrs</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Points Earned Today:</td>
+                <td style="padding: 10px; color: #10B981; font-size: 14px; font-weight: bold; text-align: right;">+${attendanceData.pointsEarned} pts</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="background: linear-gradient(135deg, #FF6B6B 0%, #FFA07A 100%); border-radius: 8px; padding: 20px; margin: 25px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <p style="color: white; font-size: 14px; margin: 0;">Current Streak:</p>
+                <p style="font-size: 28px; font-weight: bold; color: white; margin: 5px 0;">🔥 ${attendanceData.currentStreak} days</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="color: white; font-size: 14px; margin: 0;">Total Points:</p>
+                <p style="font-size: 28px; font-weight: bold; color: white; margin: 5px 0;">⭐ ${attendanceData.totalPoints}</p>
+              </div>
+            </div>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Keep up the great work!<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"WorkLogix Attendance" <${fromEmail}>`,
+      to: attendanceData.userEmail,
+      subject: `${statusEmoji} Your Daily Attendance Summary`,
+      html: htmlContent,
+    });
+
+    console.log(`[EMAIL] Daily attendance summary sent to ${attendanceData.userEmail}`);
+  } catch (error) {
+    console.error('[EMAIL] Error sending daily attendance summary:', error);
+  }
+}
+
+export async function sendMonthlyAchievementEmail(achievementData: {
+  userName: string;
+  userEmail: string;
+  badges: string[];
+  totalPoints: number;
+  presentDays: number;
+  perfectMonths: number;
+  currentStreak: number;
+}) {
+  try {
+    const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping monthly achievement email - email not configured');
+      return;
+    }
+    const fromEmail = process.env.EMAIL_USER!;
+    
+    const badgesList = achievementData.badges.map(badge => `
+      <li style="padding: 5px 0; color: #333; font-size: 14px;">🏆 ${badge}</li>
+    `).join('');
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">🎉 Monthly Achievement Report!</h1>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${achievementData.userName}</strong>,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">Congratulations on completing another month! Here's a summary of your achievements:</p>
+          
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 14px; margin: 0 0 10px 0; opacity: 0.9;">Total Points This Month:</p>
+            <p style="font-size: 48px; font-weight: bold; color: white; margin: 0;">⭐ ${achievementData.totalPoints}</p>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #333; margin-top: 0; font-size: 16px;">📈 Monthly Stats:</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Present Days:</td>
+                <td style="padding: 10px; color: #10B981; font-size: 16px; font-weight: bold; text-align: right;">${achievementData.presentDays} days</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Current Streak:</td>
+                <td style="padding: 10px; color: #F59E0B; font-size: 16px; font-weight: bold; text-align: right;">🔥 ${achievementData.currentStreak} days</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Perfect Months:</td>
+                <td style="padding: 10px; color: #4F46E5; font-size: 16px; font-weight: bold; text-align: right;">🏆 ${achievementData.perfectMonths}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${achievementData.badges.length > 0 ? `
+            <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 20px 0; border-radius: 4px;">
+              <h3 style="color: #92400E; margin-top: 0; font-size: 16px;">🎖️ New Badges Earned:</h3>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                ${badgesList}
+              </ul>
+            </div>
+          ` : ''}
+          
+          <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 16px; margin: 0;">🌟 Keep up your dedication!</p>
+            <p style="color: white; font-size: 14px; margin: 10px 0; opacity: 0.9;">Your consistency is paying off. Let's make next month even better!</p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Best regards,<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"WorkLogix Achievements" <${fromEmail}>`,
+      to: achievementData.userEmail,
+      subject: `🎉 Your Monthly Achievement Report!`,
+      html: htmlContent,
+    });
+
+    console.log(`[EMAIL] Monthly achievement email sent to ${achievementData.userEmail}`);
+  } catch (error) {
+    console.error('[EMAIL] Error sending monthly achievement email:', error);
   }
 }

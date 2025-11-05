@@ -66,6 +66,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDbUserId(userData.id);
       setCompanyId(userData.companyId || null);
       localStorage.setItem('user', JSON.stringify(userData));
+
+      if (userData.role === 'company_member' && userData.companyId) {
+        try {
+          await fetch('/api/attendance/mark', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': userData.id.toString()
+            },
+            credentials: 'include',
+            body: JSON.stringify({ 
+              companyId: userData.companyId,
+              loginTime: new Date().toISOString()
+            }),
+          });
+        } catch (attendanceError) {
+          console.error("Error marking attendance:", attendanceError);
+        }
+      }
     } catch (error) {
       console.error("Error logging in:", error);
       throw error;
@@ -99,6 +118,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setLoggingOut(true);
+    
+    if (user && user.role === 'company_member' && user.companyId) {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        await fetch('/api/attendance/logout', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-user-id': user.id.toString()
+          },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            companyId: user.companyId,
+            date: today,
+            logoutTime: new Date().toISOString()
+          }),
+        });
+      } catch (attendanceError) {
+        console.error("Error recording logout time:", attendanceError);
+      }
+    }
     
     setUser(null);
     setUserRole(null);

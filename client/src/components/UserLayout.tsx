@@ -13,7 +13,8 @@ import {
   Eye, 
   Star,
   LogOut,
-  Menu
+  Menu,
+  Calendar
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import BottomNav, { BottomNavItem } from "./BottomNav";
@@ -27,6 +28,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/user/overview", label: "Overview", icon: LayoutDashboard },
+  { path: "/user/attendance", label: "Attendance", icon: Calendar },
   { path: "/user/reports", label: "Reports", icon: FileText },
   { path: "/user/messages", label: "Messages", icon: MessageSquare },
   { path: "/user/feedback", label: "Feedback", icon: MessageCircle },
@@ -38,10 +40,10 @@ const navItems: NavItem[] = [
 
 const bottomNavItems: BottomNavItem[] = [
   { path: "/user/overview", label: "Home", icon: LayoutDashboard },
+  { path: "/user/attendance", label: "Attendance", icon: Calendar },
   { path: "/user/tasks", label: "Tasks", icon: ListTodo },
   { path: "/user/reports", label: "Reports", icon: FileText },
   { path: "/user/messages", label: "Messages", icon: MessageSquare },
-  { path: "/user/ratings", label: "Ratings", icon: Star },
 ];
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {

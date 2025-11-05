@@ -17,7 +17,8 @@ import {
   BarChart3,
   DollarSign,
   Activity,
-  Receipt
+  Receipt,
+  Calendar
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import BottomNav, { BottomNavItem } from "./BottomNav";
@@ -32,6 +33,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/admin/attendance", label: "Attendance", icon: Calendar },
   { path: "/admin/company", label: "Company", icon: Building2 },
   { path: "/admin/payment-history", label: "Payment History", icon: Receipt },
   { path: "/admin/users", label: "Users", icon: Users },
@@ -50,10 +52,10 @@ const superAdminNavItems: NavItem[] = [
 
 const bottomNavItems: BottomNavItem[] = [
   { path: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
+  { path: "/admin/attendance", label: "Attendance", icon: Calendar },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/tasks", label: "Tasks", icon: CheckSquare },
   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
-  { path: "/admin/reports", label: "Reports", icon: FileText },
 ];
 
 const superAdminBottomNavItems: BottomNavItem[] = [

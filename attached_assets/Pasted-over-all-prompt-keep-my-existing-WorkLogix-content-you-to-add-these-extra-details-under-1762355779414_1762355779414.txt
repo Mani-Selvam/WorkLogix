@@ -1,0 +1,204 @@
+over all prompt 
+	
+	keep my existing “WorkLogix" content 
+
+	you to add these extra details under specific sections (like Admin Dashboard, Employee Side, Automation Flow, etc.
+
+
+WorkLogix –   Company member Attendance & Reward Management Structure (Final Version) 
+ 
+
+🧩 1️⃣ System Purpose
+
+WorkLogix provides an automated attendance and reward system for every registered company.
+Each company has its own attendance tracking, working hours policy, and reward automation — with no manual operations.
+
+🕒 2️⃣ Core Work Timings
+Schedule	Time
+🕘 Work Start	9:00 AM
+🕕 Work End	6:00 PM
+⏰ Attendance Window	9:00 AM – 10:00 AM
+💤 Late Entry	After 9:15 AM (till 10:00 AM)
+❌ Absent	No entry after 10:00 AM
+🌙 Overtime	Work after 6:00 PM (auto-calculated)
+🧍‍♂️ 3️⃣ Company Member (Employee) Side
+
+Employees (Company Members) interact mainly with the Attendance Portal — designed for automatic tracking and self-view.
+
+🔹 Features
+Feature	Description
+🕘 Mark Attendance (Auto)	Attendance marked automatically when user logs in between 9:00–10:00 AM.
+⏱️ Auto Time Tracking	System calculates total working hours and late entry.
+📅 Daily Status View	User can view “Present”, “Late”, or “Absent” per day.
+🔥 Streak Tracker	Tracks how many consecutive days the user attended on time.
+🏅 Badges & Rewards	Auto-awarded for good attendance streaks or perfect months.
+🎯 Attendance Score	Daily + Monthly point-based rating auto-calculated.
+📊 Monthly Report	Shows attendance graph, streaks, points, and badges.
+📧 Email Notifications	Daily summary and monthly appreciation emails auto-sent.
+💡 Employee Side Flow
+
+Login using Google or manual credentials.
+
+When login time is recorded → attendance is automatically marked.
+
+System checks:
+
+Login time (before 9:00 = ✅ On-time)
+
+Between 9:01–10:00 = ⚠️ Late
+
+After 10:00 = ❌ Absent
+
+Automatically updates daily attendance table.
+
+End of the day → logout time captured → total hours saved.
+
+Rewards / streaks update auto-run at night (via cron job).
+
+🎁 Automatic Rewards Logic
+Condition	Reward	Example
+On-time login	+10 points	Daily
+Late (before 10:00 AM)	+5 points	Daily
+Absent	0 points	Daily
+5-day streak	+10 bonus points	Weekly
+30 days perfect	🎖️ “Perfect Month” badge	Monthly
+90 days perfect	🏆 “Dedicated Star” badge	Quarterly
+🏅 Badges Examples
+Badge	Meaning
+🌞 Early Bird	Logged in before 9:00 AM for 10+ days
+🏆 Perfect Month	30 days perfect attendance
+💼 Reliable Performer	No absents in a month
+🔥 Work Warrior	Highest streak
+💫 Consistent Star	Maintains 90-day streak
+🏢 4️⃣ Company Admin Side
+
+The Company Admin Dashboard provides full monitoring, analytics, and control — with all actions automated or semi-automated.
+
+🔹 Admin Dashboard Features
+Feature	Description
+👥 Member Attendance Overview	Shows all employees’ daily attendance summary.
+🗓️ Monthly Overview	View attendance patterns, late %, and absents.
+📊 Live Attendance Tracker	Real-time “who’s online” and “who’s absent” view.
+🧮 Attendance Analytics	Graphs showing company attendance trends, average login times, etc.
+🔥 Top Performers Board	Displays top employees (highest streaks, best punctuality).
+🎁 Auto Reward Summary	List of users auto-rewarded by the system.
+🏅 Badge Overview	Displays which employees earned badges this month.
+📑 Export Reports	Download attendance and reward data as PDF or Excel.
+📨 Automated Emails	System sends reward/summary mails automatically.
+⚙️ No Manual Input Needed	Everything runs via cron automation.
+💻 Admin Auto Processes (No Human Work Needed)
+Task	Trigger	Action
+Daily Attendance Sync	6:05 PM	Marks absents, late entries, updates streaks
+Weekly Summary	Every Sunday 11:00 PM	Auto emails “Weekly Attendance Summary”
+Monthly Reward	1st of each month	Assigns badges + reward credits
+Reward Email	Same time	Sends appreciation email with badge info
+Data Archive	Quarterly	Old logs moved to archive for optimization
+📈 Admin Dashboard View Example
+
+Sections:
+
+🔹 “Today’s Attendance Summary”
+
+🔹 “Top 5 Employees of the Month”
+
+🔹 “Perfect Attendance List”
+
+🔹 “Late Arrival Report”
+
+🔹 “Badge Distribution” Chart
+
+🔹 “Reward Points Summary”
+
+🧠 5️⃣ Automated Backend System Logic
+⚙️ Core Tables
+Table	Description
+companies	Company info
+users	Employees under company
+attendance_logs	Daily attendance (login/logout, status)
+attendance_rewards	Monthly reward summary
+auto_tasks	Background job logs
+badges	Badge definitions
+⚙️ Automation Flow (Backend)
+Daily (Auto)
+
+Node cron runs → checks attendance logs
+
+Marks late/absent
+
+Updates streaks
+
+Calculates points
+
+Saves to attendance_rewards
+
+Sends daily summary emails
+
+Weekly (Auto)
+
+Generates top performer list
+
+Sends weekly summary to admin + employees
+
+Monthly (Auto)
+
+Auto assigns badges and reward credits
+
+Sends “Monthly Achievement” email
+
+Updates leaderboard
+
+📧 Example Automated Email
+
+Subject: 🎉 Congrats! You Achieved a Perfect Attendance Month!
+Body:
+
+Hi [Employee Name],
+You’ve maintained perfect attendance for [Month].
+You earned the 🏆 Perfect Month badge and 100 reward points.
+Keep up your dedication!
+— WorkLogix Team
+
+🌐 6️⃣ Company Data Isolation (Multi-Tenant Concept)
+
+Each company:
+
+Has unique company_id
+
+Employees and attendance are isolated per company
+
+Admin can only view their own company’s data
+
+Global Super Admin can view all companies (for platform management)
+
+🔔 7️⃣ Key Benefits
+
+✅ 100% Automated – No manual tracking
+✅ Transparent Employee Recognition
+✅ Real-time Attendance Insights
+✅ Motivational Reward System
+✅ Scalable for Multiple Companies
+✅ Easy Integration with Payroll in future
+
+🧭 8️⃣ Final Summary Table
+Role	Access	Main Functions
+🧍‍♂️ Company Member	Employee Portal	Auto attendance, view reports, badges, streaks
+🏢 Company Admin	Admin Dashboard	View all attendance, reward summaries, analytics
+🤖 System (Automation)	Backend Engine	Cron jobs, streak tracking, badge assignment, email notifications
+
+✅ Final Output:
+A fully automated Attendance + Reward + Time Management System inside WorkLogix, where every registered company can manage its employees without manual work, while employees are automatically tracked, rewarded, and recognized for their discipline.
+
+In progress tasks  6 / 11
+1) Add attendance record tables to data ✔️
+2)Add company work timing settings ✔️
+3) Create system to manage attendance records ✔️
+4)Add ways to access attendance features ✔️
+5)Automate daily attendance processing ✔️
+6)Automate weekly/monthly reward processing ✔️
+		{pending task }
+7)Build employee attendance portal page
+8)Create admin attendance overview dashboard
+9)Send email summaries of achievements
+10)Mark attendance on login/logout
+11) Check attendance process works correctly
+

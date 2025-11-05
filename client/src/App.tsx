@@ -15,6 +15,7 @@ import EmailVerification from "@/pages/EmailVerification";
 import UserLayout from "@/components/UserLayout";
 import AdminLayout from "@/components/AdminLayout";
 import Overview from "@/pages/user/Overview";
+import Attendance from "@/pages/user/Attendance";
 import Reports from "@/pages/user/Reports";
 import Messages from "@/pages/user/Messages";
 import Feedback from "@/pages/user/Feedback";
@@ -23,6 +24,7 @@ import Tasks from "@/pages/user/Tasks";
 import ReportView from "@/pages/user/ReportView";
 import Ratings from "@/pages/user/Ratings";
 import Dashboard from "@/pages/admin/Dashboard";
+import AttendanceOverview from "@/pages/admin/AttendanceOverview";
 import Users from "@/pages/admin/Users";
 import AdminReports from "@/pages/admin/AdminReports";
 import AdminTasks from "@/pages/admin/AdminTasks";
@@ -96,6 +98,9 @@ function Router() {
       <Route path="/user/overview">
         {() => <ProtectedRoute component={() => <UserLayout><Overview /></UserLayout>} allowedRole="user" />}
       </Route>
+      <Route path="/user/attendance">
+        {() => <ProtectedRoute component={() => <UserLayout><Attendance /></UserLayout>} allowedRole="user" />}
+      </Route>
       <Route path="/user/reports">
         {() => <ProtectedRoute component={() => <UserLayout><Reports /></UserLayout>} allowedRole="user" />}
       </Route>
@@ -122,6 +127,9 @@ function Router() {
       </Route>
       <Route path="/admin/dashboard">
         {() => <ProtectedRoute component={() => <AdminLayout><Dashboard /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/attendance">
+        {() => <ProtectedRoute component={() => <AdminLayout><AttendanceOverview /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin/users">
         {() => <ProtectedRoute component={() => <AdminLayout><Users /></AdminLayout>} allowedRole="admin" />}
