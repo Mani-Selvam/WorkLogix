@@ -34,7 +34,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/attendance", label: "Attendance", icon: Calendar },
-  { path: "/admin/company", label: "Company", icon: Building2 },
+  { path: "/admin/company-profile", label: "Company Profile", icon: Building2 },
+  { path: "/admin/company", label: "Company Settings", icon: BarChart3 },
   { path: "/admin/payment-history", label: "Payment History", icon: Receipt },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/reports", label: "Reports", icon: FileText },

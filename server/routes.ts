@@ -2584,6 +2584,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Profile Management
+  app.get("/api/my-company/profile", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      const company = await storage.getCompanyById(requestingUser.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/my-company/profile", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || requestingUser.role !== 'company_admin') {
+        return res.status(403).json({ message: "Only company admins can update company profile" });
+      }
+      
+      if (!requestingUser.companyId) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Add audit trail
+      const updateData = {
+        ...req.body,
+        updatedBy: requestingUser.displayName || requestingUser.email,
+        updatedAt: new Date(),
+      };
+      
+      const updatedCompany = await storage.updateCompany(requestingUser.companyId, updateData);
+      res.json(updatedCompany);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

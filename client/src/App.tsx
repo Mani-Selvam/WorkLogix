@@ -32,6 +32,7 @@ import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
 import AdminFeedback from "@/pages/admin/AdminFeedback";
 import CompanyManagement from "@/pages/admin/CompanyManagement";
+import CompanyProfile from "@/pages/admin/CompanyProfile";
 import PaymentHistory from "@/pages/admin/PaymentHistory";
 import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
 import PaymentTracking from "@/pages/super-admin/PaymentTracking";
@@ -148,6 +149,9 @@ function Router() {
       </Route>
       <Route path="/admin/feedback">
         {() => <ProtectedRoute component={() => <AdminLayout><AdminFeedback /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/company-profile">
+        {() => <ProtectedRoute component={() => <AdminLayout><CompanyProfile /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin/company">
         {() => <ProtectedRoute component={() => <AdminLayout><CompanyManagement /></AdminLayout>} allowedRole="admin" />}
