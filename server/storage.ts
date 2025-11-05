@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens, adminActivityLogs,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens, adminActivityLogs, badges, attendanceLogs, attendanceRewards, autoTasks,
   type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
@@ -15,7 +15,11 @@ import {
   type SlotPricing, type InsertSlotPricing,
   type CompanyPayment, type InsertCompanyPayment,
   type PasswordResetToken,
-  type AdminActivityLog, type InsertAdminActivityLog
+  type AdminActivityLog, type InsertAdminActivityLog,
+  type Badge, type InsertBadge,
+  type AttendanceLog, type InsertAttendanceLog,
+  type AttendanceReward, type InsertAttendanceReward,
+  type AutoTask, type InsertAutoTask
 } from "@shared/schema";
 import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 
@@ -189,6 +193,49 @@ export interface IStorage {
   // Enhanced payment tracking
   getPaymentsByDateRange(startDate: Date, endDate: Date): Promise<CompanyPayment[]>;
   getPaymentsByStatus(status: string): Promise<CompanyPayment[]>;
+  
+  // Badge operations
+  createBadge(badge: InsertBadge): Promise<Badge>;
+  getAllBadges(): Promise<Badge[]>;
+  getBadgeById(id: number): Promise<Badge | null>;
+  
+  // Attendance log operations
+  markAttendance(userId: number, companyId: number, loginTime: Date): Promise<AttendanceLog>;
+  markAbsent(userId: number, companyId: number, date: string): Promise<AttendanceLog | null>;
+  updateAttendanceLogout(userId: number, companyId: number, date: string, logoutTime: Date): Promise<void>;
+  getAttendanceLog(userId: number, companyId: number, date: string): Promise<AttendanceLog | null>;
+  getAttendanceLogsByUser(userId: number, startDate?: string, endDate?: string): Promise<AttendanceLog[]>;
+  getAttendanceLogsByCompany(companyId: number, date?: string): Promise<AttendanceLog[]>;
+  getAttendanceLogsByDateRange(companyId: number, startDate: string, endDate: string): Promise<AttendanceLog[]>;
+  
+  // Attendance reward operations
+  getOrCreateAttendanceReward(userId: number, companyId: number): Promise<AttendanceReward>;
+  updateAttendanceReward(userId: number, updates: Partial<InsertAttendanceReward>): Promise<void>;
+  getAttendanceRewardByUser(userId: number): Promise<AttendanceReward | null>;
+  getTopPerformers(companyId: number, limit: number): Promise<Array<AttendanceReward & { user: User }>>;
+  assignBadge(userId: number, badgeName: string): Promise<void>;
+  
+  // Auto task operations
+  createAutoTask(task: InsertAutoTask): Promise<AutoTask>;
+  getRecentAutoTasks(limit: number): Promise<AutoTask[]>;
+  
+  // Attendance analytics
+  getAttendanceStats(companyId: number, date: string): Promise<{
+    totalEmployees: number;
+    present: number;
+    absent: number;
+    late: number;
+    onTime: number;
+  }>;
+  
+  getMonthlyAttendanceReport(userId: number, month: number, year: number): Promise<{
+    totalDays: number;
+    presentDays: number;
+    lateDays: number;
+    absentDays: number;
+    totalPoints: number;
+    averageHours: number;
+  }>;
 }
 
 export class DbStorage implements IStorage {
@@ -1113,6 +1160,333 @@ export class DbStorage implements IStorage {
     return await db.select().from(companyPayments)
       .where(eq(companyPayments.paymentStatus, status))
       .orderBy(desc(companyPayments.createdAt));
+  }
+
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const result = await db.insert(badges).values(badge).returning();
+    return result[0];
+  }
+
+  async getAllBadges(): Promise<Badge[]> {
+    return await db.select().from(badges).orderBy(badges.name);
+  }
+
+  async getBadgeById(id: number): Promise<Badge | null> {
+    const result = await db.select().from(badges).where(eq(badges.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async markAttendance(userId: number, companyId: number, loginTime: Date): Promise<AttendanceLog> {
+    const date = new Date(loginTime).toISOString().split('T')[0];
+    
+    const existingLog = await this.getAttendanceLog(userId, companyId, date);
+    if (existingLog) {
+      return existingLog;
+    }
+    
+    const company = await this.getCompanyById(companyId);
+    if (!company) {
+      throw new Error('Company not found');
+    }
+
+    const workStartTime = company.workStartTime || '09:00';
+    const lateEntryTime = company.lateEntryTime || '09:15';
+    
+    const loginTimeStr = loginTime.toTimeString().substring(0, 5);
+    
+    let status = 'present';
+    let isLate = false;
+    let pointsEarned = 10;
+    
+    if (loginTimeStr > lateEntryTime) {
+      status = 'late';
+      isLate = true;
+      pointsEarned = 5;
+    } else if (loginTimeStr <= workStartTime) {
+      status = 'on-time';
+      pointsEarned = 10;
+    }
+    
+    const result = await db.insert(attendanceLogs).values({
+      userId,
+      companyId,
+      date,
+      loginTime,
+      status,
+      isLate,
+      pointsEarned,
+    }).returning();
+    
+    const reward = await this.getOrCreateAttendanceReward(userId, companyId);
+    await this.updateAttendanceReward(userId, {
+      totalPoints: reward.totalPoints + pointsEarned,
+      monthlyScore: reward.monthlyScore + pointsEarned,
+      lastAttendanceDate: date,
+    });
+    
+    return result[0];
+  }
+
+  async markAbsent(userId: number, companyId: number, date: string): Promise<AttendanceLog | null> {
+    const existingLog = await this.getAttendanceLog(userId, companyId, date);
+    if (existingLog) {
+      return null;
+    }
+    
+    const result = await db.insert(attendanceLogs).values({
+      userId,
+      companyId,
+      date,
+      loginTime: null,
+      logoutTime: null,
+      status: 'absent',
+      isLate: false,
+      pointsEarned: 0,
+    }).returning();
+    
+    const reward = await this.getOrCreateAttendanceReward(userId, companyId);
+    await this.updateAttendanceReward(userId, {
+      currentStreak: 0,
+      lastAttendanceDate: date,
+    });
+    
+    return result[0];
+  }
+
+  async updateAttendanceLogout(userId: number, companyId: number, date: string, logoutTime: Date): Promise<void> {
+    const log = await this.getAttendanceLog(userId, companyId, date);
+    if (!log || !log.loginTime) {
+      return;
+    }
+    
+    const company = await this.getCompanyById(companyId);
+    const workEndTime = company?.workEndTime || '18:00';
+    
+    const loginTime = new Date(log.loginTime);
+    const totalMilliseconds = logoutTime.getTime() - loginTime.getTime();
+    const totalHours = Math.floor(totalMilliseconds / (1000 * 60 * 60));
+    
+    const logoutTimeStr = logoutTime.toTimeString().substring(0, 5);
+    const isOvertime = logoutTimeStr > workEndTime;
+    const overtimeHours = isOvertime ? Math.floor((totalMilliseconds - (9 * 60 * 60 * 1000)) / (1000 * 60 * 60)) : 0;
+    
+    await db.update(attendanceLogs)
+      .set({
+        logoutTime,
+        totalHours,
+        isOvertime,
+        overtimeHours,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(attendanceLogs.userId, userId),
+        eq(attendanceLogs.companyId, companyId),
+        eq(attendanceLogs.date, date)
+      ));
+  }
+
+  async getAttendanceLog(userId: number, companyId: number, date: string): Promise<AttendanceLog | null> {
+    const result = await db.select().from(attendanceLogs)
+      .where(and(
+        eq(attendanceLogs.userId, userId),
+        eq(attendanceLogs.companyId, companyId),
+        eq(attendanceLogs.date, date)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getAttendanceLogsByUser(userId: number, startDate?: string, endDate?: string): Promise<AttendanceLog[]> {
+    let query = db.select().from(attendanceLogs).where(eq(attendanceLogs.userId, userId));
+    
+    if (startDate && endDate) {
+      query = db.select().from(attendanceLogs).where(
+        and(
+          eq(attendanceLogs.userId, userId),
+          gte(attendanceLogs.date, startDate),
+          lte(attendanceLogs.date, endDate)
+        )
+      );
+    }
+    
+    return await query.orderBy(desc(attendanceLogs.date));
+  }
+
+  async getAttendanceLogsByCompany(companyId: number, date?: string): Promise<AttendanceLog[]> {
+    if (date) {
+      return await db.select().from(attendanceLogs)
+        .where(and(
+          eq(attendanceLogs.companyId, companyId),
+          eq(attendanceLogs.date, date)
+        ))
+        .orderBy(attendanceLogs.userId);
+    }
+    
+    return await db.select().from(attendanceLogs)
+      .where(eq(attendanceLogs.companyId, companyId))
+      .orderBy(desc(attendanceLogs.date));
+  }
+
+  async getAttendanceLogsByDateRange(companyId: number, startDate: string, endDate: string): Promise<AttendanceLog[]> {
+    return await db.select().from(attendanceLogs)
+      .where(and(
+        eq(attendanceLogs.companyId, companyId),
+        gte(attendanceLogs.date, startDate),
+        lte(attendanceLogs.date, endDate)
+      ))
+      .orderBy(desc(attendanceLogs.date));
+  }
+
+  async getOrCreateAttendanceReward(userId: number, companyId: number): Promise<AttendanceReward> {
+    const existing = await this.getAttendanceRewardByUser(userId);
+    if (existing) {
+      return existing;
+    }
+    
+    const result = await db.insert(attendanceRewards).values({
+      userId,
+      companyId,
+      totalPoints: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      badgesEarned: [],
+      monthlyScore: 0,
+      perfectMonths: 0,
+    }).returning();
+    
+    return result[0];
+  }
+
+  async updateAttendanceReward(userId: number, updates: Partial<InsertAttendanceReward>): Promise<void> {
+    await db.update(attendanceRewards)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(attendanceRewards.userId, userId));
+  }
+
+  async getAttendanceRewardByUser(userId: number): Promise<AttendanceReward | null> {
+    const result = await db.select().from(attendanceRewards)
+      .where(eq(attendanceRewards.userId, userId))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getTopPerformers(companyId: number, limit: number): Promise<Array<AttendanceReward & { user: User }>> {
+    const results = await db
+      .select()
+      .from(attendanceRewards)
+      .innerJoin(users, eq(attendanceRewards.userId, users.id))
+      .where(eq(attendanceRewards.companyId, companyId))
+      .orderBy(desc(attendanceRewards.totalPoints))
+      .limit(limit);
+    
+    return results.map(r => ({
+      ...r.attendance_rewards,
+      user: r.users,
+    }));
+  }
+
+  async assignBadge(userId: number, badgeName: string): Promise<void> {
+    const reward = await this.getAttendanceRewardByUser(userId);
+    if (!reward) {
+      return;
+    }
+    
+    const currentBadges = reward.badgesEarned || [];
+    if (!currentBadges.includes(badgeName)) {
+      await this.updateAttendanceReward(userId, {
+        badgesEarned: [...currentBadges, badgeName],
+      });
+    }
+  }
+
+  async createAutoTask(task: InsertAutoTask): Promise<AutoTask> {
+    const result = await db.insert(autoTasks).values(task).returning();
+    return result[0];
+  }
+
+  async getRecentAutoTasks(limit: number): Promise<AutoTask[]> {
+    return await db.select().from(autoTasks)
+      .orderBy(desc(autoTasks.executedAt))
+      .limit(limit);
+  }
+
+  async getAttendanceStats(companyId: number, date: string): Promise<{
+    totalEmployees: number;
+    present: number;
+    absent: number;
+    late: number;
+    onTime: number;
+  }> {
+    const [totalResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(and(
+        eq(users.companyId, companyId),
+        eq(users.role, 'company_member'),
+        eq(users.isActive, true)
+      ));
+    
+    const logs = await this.getAttendanceLogsByCompany(companyId, date);
+    
+    const present = logs.filter(l => l.status === 'present' || l.status === 'on-time').length;
+    const late = logs.filter(l => l.status === 'late').length;
+    const onTime = logs.filter(l => l.status === 'on-time').length;
+    const absent = Number(totalResult.count) - logs.length;
+    
+    return {
+      totalEmployees: Number(totalResult.count),
+      present,
+      absent,
+      late,
+      onTime,
+    };
+  }
+
+  async getMonthlyAttendanceReport(userId: number, month: number, year: number): Promise<{
+    totalDays: number;
+    presentDays: number;
+    lateDays: number;
+    absentDays: number;
+    totalPoints: number;
+    averageHours: number;
+  }> {
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`;
+    
+    const logs = await this.getAttendanceLogsByUser(userId, startDate, endDate);
+    
+    const presentDays = logs.filter(l => l.status === 'present' || l.status === 'on-time').length;
+    const lateDays = logs.filter(l => l.status === 'late').length;
+    const totalPoints = logs.reduce((sum, l) => sum + l.pointsEarned, 0);
+    const totalHours = logs.reduce((sum, l) => sum + (l.totalHours || 0), 0);
+    const averageHours = logs.length > 0 ? totalHours / logs.length : 0;
+    
+    const workingDays = this.getWorkingDaysInMonth(month, year);
+    const absentDays = workingDays - logs.length;
+    
+    return {
+      totalDays: workingDays,
+      presentDays,
+      lateDays,
+      absentDays,
+      totalPoints,
+      averageHours,
+    };
+  }
+
+  private getWorkingDaysInMonth(month: number, year: number): number {
+    const lastDay = new Date(year, month, 0).getDate();
+    let workingDays = 0;
+    
+    for (let day = 1; day <= lastDay; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDays++;
+      }
+    }
+    
+    return workingDays;
   }
 }
 

@@ -7,6 +7,8 @@ import bcrypt from "bcryptjs";
 import session from "express-session";
 import passport from "./passport";
 import dotenv from "dotenv";
+import cron from "node-cron";
+import { processDailyAttendance, processWeeklySummary, processMonthlyRewards, initializeBadges } from "./attendance-automation";
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -86,6 +88,24 @@ async function initializeSuperAdmin() {
     const server = await registerRoutes(app);
     
     await initializeSuperAdmin();
+    await initializeBadges();
+    
+    cron.schedule('5 18 * * *', async () => {
+        log('[Cron] Running daily attendance processing...');
+        await processDailyAttendance();
+    });
+    
+    cron.schedule('0 23 * * 0', async () => {
+        log('[Cron] Running weekly summary...');
+        await processWeeklySummary();
+    });
+    
+    cron.schedule('0 0 1 * *', async () => {
+        log('[Cron] Running monthly rewards processing...');
+        await processMonthlyRewards();
+    });
+    
+    log('✅ Attendance automation cron jobs initialized');
 
     const wss = new WebSocketServer({ noServer: true });
 

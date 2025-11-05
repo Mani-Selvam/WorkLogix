@@ -18,6 +18,14 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 const isGoogleOAuthConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const userId = parseInt(req.headers["x-user-id"] as string);
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Config endpoint to check feature availability
   app.get("/api/config", (req, res) => {
@@ -2407,6 +2415,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      next(error);
+    }
+  });
+
+  // Attendance routes (with authentication)
+  app.post("/api/attendance/mark", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const { companyId, loginTime } = req.body;
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+      
+      const log = await storage.markAttendance(userId, companyId, loginTime ? new Date(loginTime) : new Date());
+      res.json(log);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/attendance/logout", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const { companyId, date, logoutTime } = req.body;
+      
+      if (!companyId || !date) {
+        return res.status(400).json({ message: "Company ID and date are required" });
+      }
+      
+      await storage.updateAttendanceLogout(userId, companyId, date, logoutTime ? new Date(logoutTime) : new Date());
+      res.json({ message: "Logout time updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/logs", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const { startDate, endDate } = req.query;
+      
+      const logs = await storage.getAttendanceLogsByUser(userId, startDate as string, endDate as string);
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/logs/today", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const companyId = parseInt(req.headers["x-company-id"] as string);
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID is required" });
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const log = await storage.getAttendanceLog(userId, companyId, today);
+      res.json(log);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/company/:companyId", requireAuth, async (req, res, next) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const { date } = req.query;
+      
+      const logs = await storage.getAttendanceLogsByCompany(companyId, date as string);
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/company/:companyId/date-range", requireAuth, async (req, res, next) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const logs = await storage.getAttendanceLogsByDateRange(companyId, startDate as string, endDate as string);
+      res.json(logs);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/stats/:companyId", requireAuth, async (req, res, next) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const { date } = req.query;
+      
+      const today = date as string || new Date().toISOString().split('T')[0];
+      const stats = await storage.getAttendanceStats(companyId, today);
+      res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/rewards/:userId", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const userId = parseInt(req.params.userId);
+      
+      if (requestingUserId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const reward = await storage.getAttendanceRewardByUser(userId);
+      res.json(reward);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/monthly-report", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const { month, year } = req.query;
+      
+      if (!month || !year) {
+        return res.status(400).json({ message: "Month and year are required" });
+      }
+      
+      const report = await storage.getMonthlyAttendanceReport(userId, parseInt(month as string), parseInt(year as string));
+      res.json(report);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance/top-performers/:companyId", requireAuth, async (req, res, next) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const performers = await storage.getTopPerformers(companyId, limit);
+      res.json(performers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/badges", requireAuth, async (req, res, next) => {
+    try {
+      const badges = await storage.getAllBadges();
+      res.json(badges);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/badges", requireAuth, async (req, res, next) => {
+    try {
+      const badge = await storage.createBadge(req.body);
+      res.json(badge);
+    } catch (error) {
       next(error);
     }
   });

@@ -37,6 +37,12 @@ export const companies = pgTable("companies", {
   maxAdmins: integer("max_admins").notNull().default(1),
   maxMembers: integer("max_members").notNull().default(10),
   isActive: boolean("is_active").notNull().default(true),
+  
+  workStartTime: varchar("work_start_time", { length: 10 }).default("09:00"),
+  workEndTime: varchar("work_end_time", { length: 10 }).default("18:00"),
+  attendanceWindowEnd: varchar("attendance_window_end", { length: 10 }).default("10:00"),
+  lateEntryTime: varchar("late_entry_time", { length: 10 }).default("09:15"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -195,6 +201,56 @@ export const adminActivityLogs = pgTable("admin_activity_logs", {
   targetUserId: integer("target_user_id").references(() => users.id),
   details: text("details"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }),
+  criteria: text("criteria"),
+  type: varchar("type", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const attendanceLogs = pgTable("attendance_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  loginTime: timestamp("login_time"),
+  logoutTime: timestamp("logout_time"),
+  status: varchar("status", { length: 20 }).notNull(),
+  totalHours: integer("total_hours").default(0),
+  isLate: boolean("is_late").notNull().default(false),
+  isOvertime: boolean("is_overtime").notNull().default(false),
+  overtimeHours: integer("overtime_hours").default(0),
+  pointsEarned: integer("points_earned").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const attendanceRewards = pgTable("attendance_rewards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  totalPoints: integer("total_points").notNull().default(0),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  lastAttendanceDate: varchar("last_attendance_date", { length: 10 }),
+  badgesEarned: text("badges_earned").array(),
+  monthlyScore: integer("monthly_score").notNull().default(0),
+  perfectMonths: integer("perfect_months").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const autoTasks = pgTable("auto_tasks", {
+  id: serial("id").primaryKey(),
+  taskName: varchar("task_name", { length: 100 }).notNull(),
+  taskType: varchar("task_type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(),
+  details: text("details"),
+  executedAt: timestamp("executed_at").defaultNow().notNull(),
 });
 
 export const insertCompanySchema = createInsertSchema(companies).omit({
@@ -434,3 +490,36 @@ export const insertAdminActivityLogSchema = createInsertSchema(adminActivityLogs
 
 export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema>;
 export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+export const insertAttendanceLogSchema = createInsertSchema(attendanceLogs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAttendanceLog = z.infer<typeof insertAttendanceLogSchema>;
+export type AttendanceLog = typeof attendanceLogs.$inferSelect;
+
+export const insertAttendanceRewardSchema = createInsertSchema(attendanceRewards).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertAttendanceReward = z.infer<typeof insertAttendanceRewardSchema>;
+export type AttendanceReward = typeof attendanceRewards.$inferSelect;
+
+export const insertAutoTaskSchema = createInsertSchema(autoTasks).omit({
+  id: true,
+  executedAt: true,
+});
+
+export type InsertAutoTask = z.infer<typeof insertAutoTaskSchema>;
+export type AutoTask = typeof autoTasks.$inferSelect;
