@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +37,7 @@ export default function CompanyRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [serverIdInfo, setServerIdInfo] = useState<{ serverId: string; email: string } | null>(null);
+  const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState(false);
 
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -62,6 +63,20 @@ export default function CompanyRegistration() {
   };
 
   const passwordStrength = getPasswordStrength(password);
+
+  useEffect(() => {
+    const checkConfig = async () => {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        setGoogleOAuthEnabled(config.googleOAuthEnabled || false);
+      } catch (error) {
+        console.error('Failed to fetch config:', error);
+        setGoogleOAuthEnabled(false);
+      }
+    };
+    checkConfig();
+  }, []);
 
   const onSubmit = async (data: RegistrationFormData) => {
     if (!data.acceptTerms) {
@@ -167,26 +182,30 @@ export default function CompanyRegistration() {
           <CardDescription>Get your unique Company Server ID</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            data-testid="button-google-register"
-          >
-            <SiGoogle className="h-5 w-5" />
-            Register with Google
-          </Button>
+          {googleOAuthEnabled && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                data-testid="button-google-register"
+              >
+                <SiGoogle className="h-5 w-5" />
+                Register with Google
+              </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+            </>
+          )}
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

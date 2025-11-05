@@ -54,7 +54,9 @@ export default function LandingPage() {
     } else if (error) {
       let errorMessage = 'An error occurred during registration';
       
-      if (error === 'google_auth_failed') {
+      if (error === 'google_oauth_not_configured') {
+        errorMessage = 'Google Sign-In is not available at the moment. Please use the registration form instead.';
+      } else if (error === 'google_auth_failed') {
         errorMessage = 'Google authentication failed. Please try again.';
       } else if (error === 'no_email') {
         errorMessage = 'No email found in Google account. Please use an account with an email.';

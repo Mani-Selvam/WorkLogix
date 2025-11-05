@@ -16,7 +16,17 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
+const isGoogleOAuthConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Config endpoint to check feature availability
+  app.get("/api/config", (req, res) => {
+    res.json({
+      googleOAuthEnabled: isGoogleOAuthConfigured,
+      stripeEnabled: !!stripe,
+    });
+  });
+
   // Stripe Webhook Handler (MUST be before express.json() middleware)
   // This endpoint needs raw body for signature verification
   app.post("/api/stripe-webhook", express.raw({ type: 'application/json' }), async (req, res, next) => {
@@ -259,14 +269,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Google OAuth - Initiate
-  app.get("/api/auth/google", passport.authenticate('google', { 
-    scope: ['profile', 'email'] 
-  }));
+  app.get("/api/auth/google", (req, res, next) => {
+    if (!isGoogleOAuthConfigured) {
+      return res.redirect('/?error=google_oauth_not_configured');
+    }
+    passport.authenticate('google', { 
+      scope: ['profile', 'email'] 
+    })(req, res, next);
+  });
 
   // Google OAuth - Callback
-  app.get("/api/auth/google/callback", 
-    passport.authenticate('google', { failureRedirect: '/?error=google_auth_failed', session: false }),
-    async (req, res, next) => {
+  app.get("/api/auth/google/callback", (req, res, next) => {
+    if (!isGoogleOAuthConfigured) {
+      return res.redirect('/?error=google_oauth_not_configured');
+    }
+    passport.authenticate('google', { failureRedirect: '/?error=google_auth_failed', session: false })(req, res, next);
+  }, async (req, res, next) => {
       try {
         const googleUser = req.user as any;
         
