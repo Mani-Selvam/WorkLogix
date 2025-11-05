@@ -395,6 +395,7 @@ export async function sendCompanyVerificationEmail(data: {
 }
 
 export async function sendReportNotification(reportData: {
+  adminEmail: string;
   userName: string;
   reportType: string;
   plannedTasks?: string | null;
@@ -446,12 +447,12 @@ export async function sendReportNotification(reportData: {
 
     await transporter.sendMail({
       from: `"WorkLogix" <${fromEmail}>`,
-      to: 'maniselvam2023@gmail.com',
+      to: reportData.adminEmail,
       subject: `New ${reportData.reportType.charAt(0).toUpperCase() + reportData.reportType.slice(1)} Report - ${reportData.userName}`,
       html: htmlContent,
     });
 
-    console.log(`Email sent successfully for ${reportData.reportType} report by ${reportData.userName}`);
+    console.log(`Email sent successfully for ${reportData.reportType} report by ${reportData.userName} to ${reportData.adminEmail}`);
   } catch (error) {
     console.error('Error sending email:', error);
   }

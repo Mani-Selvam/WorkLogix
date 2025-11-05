@@ -1467,19 +1467,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedReport = insertReportSchema.parse({ ...req.body, companyId: requestingUser.companyId });
       const report = await storage.createReport(validatedReport);
       
-      // Get user information for email
+      // Get user information and company admin email for notification
       const user = await storage.getUserById(validatedReport.userId);
       if (user) {
-        // Send email notification asynchronously (don't wait for it)
-        sendReportNotification({
-          userName: user.displayName,
-          reportType: validatedReport.reportType,
-          plannedTasks: validatedReport.plannedTasks,
-          completedTasks: validatedReport.completedTasks,
-          pendingTasks: validatedReport.pendingTasks,
-          notes: validatedReport.notes,
-          createdAt: report.createdAt,
-        }).catch(err => console.error('Failed to send email notification:', err));
+        // Get company to find admin email
+        const company = await storage.getCompanyById(user.companyId!);
+        if (company && company.email) {
+          // Send email notification to company admin asynchronously (don't wait for it)
+          sendReportNotification({
+            adminEmail: company.email,
+            userName: user.displayName,
+            reportType: validatedReport.reportType,
+            plannedTasks: validatedReport.plannedTasks,
+            completedTasks: validatedReport.completedTasks,
+            pendingTasks: validatedReport.pendingTasks,
+            notes: validatedReport.notes,
+            createdAt: report.createdAt,
+          }).catch(err => console.error('Failed to send email notification:', err));
+        }
       }
       
       res.json(report);
