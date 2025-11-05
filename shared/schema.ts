@@ -43,6 +43,8 @@ export const companies = pgTable("companies", {
   attendanceWindowEnd: varchar("attendance_window_end", { length: 10 }).default("10:00"),
   lateEntryTime: varchar("late_entry_time", { length: 10 }).default("09:15"),
   
+  createdBy: varchar("created_by", { length: 255 }),
+  updatedBy: varchar("updated_by", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
