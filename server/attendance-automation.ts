@@ -21,6 +21,61 @@ function calculateDailyPoints(status: string, totalHours: number): number {
   return points;
 }
 
+async function updateDailyProductivity(userId: number, companyId: number, date: string) {
+  try {
+    const log = await storage.getAttendanceLog(userId, companyId, date);
+    if (!log) return;
+    
+    let productivityScore = 0;
+    
+    let attendanceScore = 0;
+    if (log.status === 'on-time' || log.status === 'present') {
+      attendanceScore = 10;
+    } else if (log.status === 'slightly-late') {
+      attendanceScore = 7;
+    } else if (log.status === 'late') {
+      attendanceScore = 5;
+    } else if (log.status === 'very-late') {
+      attendanceScore = 3;
+    }
+    productivityScore += attendanceScore * 2;
+    
+    const todayTasks = await storage.getTasksByUserId(userId);
+    const completedToday = todayTasks.filter((t: any) => 
+      t.status === 'completed' && 
+      t.updatedAt && 
+      new Date(t.updatedAt).toISOString().split('T')[0] === date
+    );
+    const taskCompletionBonus = completedToday.length * 10;
+    productivityScore += taskCompletionBonus;
+    
+    if (log.totalHours && log.totalHours >= 9) {
+      productivityScore += 15;
+    } else if (log.totalHours && log.totalHours >= 8) {
+      productivityScore += 10;
+    }
+    
+    const oldProductivityScore = log.productivityScore || 0;
+    const scoreDelta = productivityScore - oldProductivityScore;
+    
+    await storage.updateAttendanceLog(log.id, {
+      productivityScore,
+    });
+    
+    const reward = await storage.getAttendanceRewardByUser(userId);
+    if (reward && scoreDelta !== 0) {
+      const currentMonthlyScore = reward.monthlyScore || 0;
+      await storage.updateAttendanceReward(userId, {
+        monthlyScore: currentMonthlyScore + scoreDelta,
+      });
+    }
+    
+    console.log(`[Productivity] User ${userId}: Daily score ${productivityScore}, Attendance: ${attendanceScore}, Tasks: ${completedToday.length}, Hours: ${log.totalHours}`);
+  } catch (error) {
+    console.error(`[Productivity] Error updating productivity for user ${userId}:`, error);
+  }
+}
+
 export async function processAutoLogout() {
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -122,6 +177,7 @@ export async function processDailyAttendance() {
       
       for (const member of activeMembers) {
         await updateStreak(member.id, company.id);
+        await updateDailyProductivity(member.id, company.id, today);
       }
       
       for (const log of todayLogs) {

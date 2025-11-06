@@ -229,6 +229,7 @@ export const attendanceLogs = pgTable("attendance_logs", {
   isOvertime: boolean("is_overtime").notNull().default(false),
   overtimeHours: integer("overtime_hours").default(0),
   pointsEarned: integer("points_earned").notNull().default(0),
+  productivityScore: integer("productivity_score").notNull().default(0),
   reportSubmitted: boolean("report_submitted").notNull().default(false),
   earlyLogoutReason: text("early_logout_reason"),
   autoLogout: boolean("auto_logout").notNull().default(false),
