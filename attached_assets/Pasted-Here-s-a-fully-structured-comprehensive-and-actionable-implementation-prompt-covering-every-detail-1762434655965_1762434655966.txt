@@ -1,0 +1,177 @@
+Here’s a fully structured, comprehensive, and actionable implementation prompt covering every detail from your specifications for WorkLogix, adjusted and systematized for clarity, coverage, and practical handoff to developers or solution architects. This ensures zero missed features and readiness for collaborative building and rapid iteration.
+
+***
+
+## WORKLOGIX – MASTER SYSTEM SPECIFICATIONS
+
+### 1. System Purpose
+
+WorkLogix is a multi-company (multi-tenant), server-time-controlled automated attendance, productivity, performance, and rewards platform. The system provides a dedicated admin dashboard, automated workflows, and real-time transparency for both employees and managers, with all actions, analytics, and rewards processed end-to-end—no manual loopholes or hidden actions.
+
+***
+
+### 2. Core Work Timings
+
+- **Work Start:** 9:00 AM (server time)
+- **Work End:** 6:00 PM (server time)
+- **Attendance Window:** 9:00 AM–10:00 AM (flexible arrival)
+    - *Slightly Late:* 9:01–9:15 AM
+    - *Late:* 9:16–10:00 AM
+    - *Very Late:* After 10:00 AM (marked present, but streak/points lost)
+    - *Absent:* If not logged in by 10:00 AM (configurable as per strict attendance)
+- **Overtime:** After 6:00 PM (server time), auto-calculated by logout
+- **Grace Period:** 5–10 minutes (optional, per company config)
+
+- **Login button is always visible – no UI restriction on login/logout.**
+
+***
+
+### 3. Employee (User) Portal
+
+#### User Controls
+
+- **Login Button:** Always available; attendance strictly via server time.
+- **Logout Button:** Always available; logs out instantly regardless of when clicked, with exact time recorded.
+- **Daily Work Report:** Can be submitted anytime after tasks are completed; links to "tasks_reports" table; enables instant logout; marks day as “Work Completed”.
+- **User Dashboard:** Shows:
+    - Today's login/logout
+    - Working hours
+    - Attendance status, late/absent/leave/overtime markers
+    - Points, streaks, badges
+    - Productivity status
+    - Report status
+    - Color-coded 7-day and monthly attendance calendar/history
+- **Attendance History:** Last 7 days (color-coded), plus monthly overview
+- **Self-Service Issue Management:**
+    - Request login/logout correction
+    - Apply for leave
+    - Submit late explanations (admin reviews/acts)
+- **No manual attendance edits by user; all logs/points automated by server.**
+
+#### Automated System Logic
+
+- **On Login:** Attendance status determined instantly by server time, streaks/points updated, late/absent handled per rules.
+- **On Logout:** Working hours/overtime calculated, day-level points/productivity/streak status updated, "task completion" status linked if report submitted.
+- **Auto-Logout Scenarios:**
+    - Company cut-off time +1hr (7:00 PM default)
+    - >2 hr inactivity
+    - System detects browser crash/device shutdown
+    - Cron task at night enforces logout if still active
+- **All automation prevents manual gaming of system.**
+
+***
+
+### 4. Admin Portal: Dual-View System
+
+#### (A) Overall Attendance Dashboard
+
+- Overview of all employees daily:
+    - Name, Role, Status, Login/Logout, Working Hours, Overtime, Points, Report status
+    - Filters: status, department, date range, etc.
+    - Real-time auto-refresh
+    - "View Details" action for deep drilldown per member
+
+#### (B) Individual Attendance Profile
+
+- **Personal Info:** Name, ID, department, role, joining date, work mode
+- **Monthly Calendar:** Attendance, leave, holidays, overtime, report status, with color-coded markers
+- **Full Daily Logs Table:** Each day's login/logout, hours, overtime, status, notes, report
+- **Editable by Admin:** Correction buttons for login/logout/times/remarks; can add attendance, manage holidays/leaves, and add notes
+- **Performance Analytics:** Full stats: total working/productivity days, avg login/logout, overtime/late/absent, best streak, performance and productivity index, streaks, badges, progress
+- **Exportable:** PDF downloads for any view
+- **All admin actions are audit-logged for transparency.**
+
+***
+
+### 5. Admin Workflow
+
+- Dashboard → Today's overview
+- "View Details" → deep-dive into user record, drill down, edit or act on entries
+- Back to overview
+
+- **Admin can:** Correct attendances, approve/reject leave, add manual holidays/attendance, export reports, manage all analytics and reward settings.
+
+***
+
+### 6. Automation (Backend Cron Jobs)
+
+**Daily (Post 6PM):**  
+- Mark late/very late/absent
+- Auto logout
+- Calculate daily hours, overtime, scores, streaks, productivity
+- Email daily summary to employees and managers
+
+**Weekly:**
+- Auto leaderboard, weekly summary email with top/bottom performers and suggestions
+
+**Monthly:**
+- Award achievement badges (Perfect Month, Early Bird, Reliable Performer, Overtime Warrior)
+- Publish monthly leaderboard
+- Monthly performance analytics to admins
+- (Optional): Reset points per config
+
+**NO MANUAL INTERVENTION NEEDED – all flows automated**
+
+***
+
+### 7. Database Schema (Core Tables)
+
+- companies
+- users
+- attendance_logs
+- attendance_rewards
+- leaves
+- holidays
+- tasks_reports
+- auto_tasks
+- badges
+- company_settings
+- user_settings
+- performance_scores
+- streak_logs
+
+**All tables cross-referenced, audit-logged. No missing entity.**
+
+***
+
+### 8. Multi-Tenancy
+
+- Each company: own rules, employees, holiday/leave list, reward structure, time zone, dashboards, data separation
+- **Super Admin:** Full cross-company control and analytics; cannot access individual company’s private data directly without audit trail.
+
+***
+
+### 9. Feature Matrix: User vs Admin
+
+| Feature                   | User    | Admin             |
+|---------------------------|---------|-------------------|
+| Login                     | ✅      | ❌                |
+| Logout                    | ✅      | ❌                |
+| Submit report             | ✅      | ✅ View           |
+| Edit attendance           | ❌      | ✅ Full control   |
+| View own logs             | ✅      | ✅ All users      |
+| View all employees        | ❌      | ✅                |
+| Approve leave             | ❌      | ✅                |
+| Add holiday               | ❌      | ✅                |
+| Export reports            | ❌      | ✅                |
+| Streaks                   | ✅ View | ✅ Monitor        |
+| Points/Badges             | ✅ Earn | ✅ Manage         |
+| Analytics                 | ❌      | ✅ Full analytics |
+
+**Nothing missing from roles, actions, or permissions.**
+
+***
+
+### 10. Implementation & Customization Guidelines
+
+- **All server actions must reflect server time for all workflows and logs.**
+- **All time thresholds and grace periods configurable per company.**
+- **Full modularity for reward logic, badge types, email templates, leave/holiday definitions.**
+- **Self-service requests routed to admin for action with audit and status tracking.**
+- **System must reject any manual attendance insertions except for authorized admin actions. **
+- **Ensure real-time UI sync for dashboards/admin overviews using push or polling.**
+- **No ghost users, hidden manual edits, or missing event flows.**
+
+***
+
+**This is a final, master, and complete WorkLogix implementation blueprint. All requirements, controls, data, automation, and user/admin experiences are included. If any detail is missing, it must be explicitly validated and added. Use this as your development baseline for all features—leave no section incomplete.**
