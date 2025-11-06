@@ -18,11 +18,17 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 const isGoogleOAuthConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
-function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const userId = parseInt(req.headers["x-user-id"] as string);
   if (!userId) {
     return res.status(401).json({ message: "Authentication required" });
   }
+  
+  const user = await storage.getUserById(userId);
+  if (!user || !user.isActive) {
+    return res.status(401).json({ message: "User account disabled", code: "USER_INACTIVE" });
+  }
+  
   next();
 }
 

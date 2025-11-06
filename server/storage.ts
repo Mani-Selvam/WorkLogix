@@ -952,8 +952,8 @@ export class DbStorage implements IStorage {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const [userCount] = companyId
-      ? await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.companyId, companyId))
-      : await db.select({ count: sql<number>`count(*)` }).from(users);
+      ? await db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, companyId), eq(users.isActive, true)))
+      : await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.isActive, true));
     
     const [todayReportCount] = companyId
       ? await db.select({ count: sql<number>`count(*)` })

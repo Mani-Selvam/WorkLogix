@@ -3,6 +3,20 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    
+    if (res.status === 401) {
+      try {
+        const errorData = JSON.parse(text);
+        if (errorData.code === "USER_INACTIVE") {
+          localStorage.clear();
+          window.location.href = "/";
+          throw new Error("Your account has been disabled. You have been logged out.");
+        }
+      } catch (parseError) {
+        
+      }
+    }
+    
     throw new Error(`${res.status}: ${text}`);
   }
 }
