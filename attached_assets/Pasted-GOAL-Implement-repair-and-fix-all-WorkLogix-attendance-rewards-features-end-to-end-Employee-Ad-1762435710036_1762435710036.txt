@@ -1,0 +1,417 @@
+GOAL: Implement/repair and fix all WorkLogix attendance + rewards features end-to-end (Employee + Admin + Automation), as specified below, without skipping any task.
+
+✅✅✅ WORKLOGIX – FINAL MASTER PROMPT (Attendees ->  user  / admin)
+
+
+🧩 1️⃣ SYSTEM PURPOSE
+
+WorkLogix is a company-level automated attendance, time tracking, productivity, reward, and performance management system designed for multi-company usage.
+Every company in the system gets:Unique attendance rules,Unique working schedule,Reward system.Dedicated admin dashboard,Employee self-service portal, Complete automation for attendance, rewards, emails, and reports
+
+✅ No manual attendance marking
+✅ All timings controlled by server time
+✅ Fully multi-tenant architecture
+
+🕒 2️⃣ CORE WORK TIMINGS (SERVER CONTROLLED)
+Schedule	Time	Notes
+Work Start	                          9:00 AM	                Server time
+Work End	                                  6:00 PM	                Server time
+Attendance Window	                  9:00–10:00 AM	Flexible
+Slightly Late	                          9:01–9:15	        Minor delay
+Late	                                          9:16–10:00	        Counted as late
+Very Late	                          After 10:00 AM	Allowed but not counted for streak/points
+Overtime	                          After 6:00 PM	Based on actual logout
+
+✅ Login button ALWAYS visible
+✅ After 10:00 AM → User can still login and work
+✅ Attendance status decided by server time, not UI visibility
+✅ Optional: Grace Time (5–10 mins)
+
+3 ) COMPANY MEMBER (EMPLOYEE) SIDE
+
+This section defines all controls, all actions, and all automated behaviors for employees.
+No missing points.
+
+✅ ✅ USER CONTROLS (FULL LIST)
+✅ 1. Login Button (Always Visible)
+User can login any time.
+System decides:On-time,Slightly late,Late,Very Late,Absent (if strict mode is enabled)
+✅ No hiding login button.
+✅ Users who come late should still work.
+✅ 2. Logout Button
+User may logout at:Normal end of day,After finishing tasks early,After submitting report,After overtime,Anytime needed (doctor appointment, emergency)
+✅ Logout time recorded EXACTLY using server time.
+
+✅ 3. Submit Daily Work Report
+If user completes tasks early:
+✅ Report submission allowed
+✅ System allows instant logout
+✅ Working hours calculated normally
+✅ Day counted as “Work Completed”
+✅ Report submission stored in table: tasks_reports
+✅ 4. User Dashboard Includes
+Real-time information:
+
+Today’s login
+
+Today’s logout
+
+Working hours
+
+Attendance status
+
+Late type
+
+Early logout reason
+
+Overtime
+
+Points
+
+Streak
+
+Badges earned
+
+Productivity level
+
+Report submission status
+
+Monthly calendar
+
+Last 7-day history
+
+✅ Self-service & transparent
+
+✅ 5. Attendance History
+
+7-day quick history
+
+Full monthly calendar
+
+Color-coded days:
+✅ Present, ⚠️ Late, ❌ Absent, 🟦 Leave, 🟧 Overtime, 🟩 Holiday
+
+✅ 6. Manage Issues (Self-Service)
+
+User can request:
+
+Login correction
+
+Logout correction
+
+Leave application
+
+Late explanation
+
+(Admin will approve/reject)
+
+✅ ✅ USER-SIDE AUTOMATED BEHAVIOR (NO MISS)
+✅ When user clicks Login
+
+System determines:
+
+On-time
+
+Slightly late
+
+Late
+
+Very Late
+
+Absent (if company enforces strict attendance)
+
+✅ Attendance marked automatically
+✅ No manual action required
+
+✅ When user clicks Logout
+
+System automatically:
+
+Calculates working hours
+
+Detects overtime
+
+Updates productivity score
+
+Updates daily attendance score
+
+Updates “task completion” status
+
+✅ If user forgets logout
+
+Auto logout triggers:
+
+After company close time + 1 hour (default 7 PM)
+
+OR after 2 hours of inactivity
+
+OR device shutdown/browser crash detected
+
+OR if logout not clicked by night cron
+
+✅ Prevents attendance corruption
+✅ Fair calculation for late logins
+
+🏢 4️⃣ ADMIN SIDE – TWO-VIEW SYSTEM
+
+Admin has full control, full visibility, and two types of attendance views.
+
+✅ ✅ A. OVERALL EMPLOYEE ATTENDANCE VIEW (ADMIN PAGE 1)
+
+This is the main dashboard for the day.
+
+✅ Shows EVERY employee with:
+
+Name
+
+Role
+
+Status (Present/Late/Absent/Very Late)
+
+Login Time
+
+Logout Time
+
+Working Hours
+
+Overtime
+
+Report Submitted
+
+Today’s Points
+
+View Details button
+
+✅ Filters:
+Present / Late / Absent / Overtime / Department / Date Range
+
+✅ Real-time refresh
+
+✅ ✅ B. PARTICULAR MEMBER ATTENDANCE VIEW (ADMIN PAGE 2)
+
+Shows complete employee attendance profile.
+
+✅ Personal Info Section
+
+Name
+
+Employee ID
+
+Department
+
+Position
+
+Joining Date
+
+Work Mode (Office/Hybrid/Remote)
+
+✅ Monthly Attendance Calendar
+
+Day-by-day view:
+
+✅ Present
+
+⚠️ Late
+
+❌ Absent
+
+🟦 Leave
+
+🟩 Holiday
+
+🟧 Overtime
+
+🔵 Report Submitted
+
+✅ Full Daily Logs Table
+
+| Date | Login | Logout | Hours | Overtime | Status | Report Submitted | Notes |
+
+✅ Editable
+✅ Complete transparency
+
+✅ Performance Analytics
+
+Includes:
+
+Total working days
+
+Total productivity days
+
+Average login time
+
+Average logout time
+
+Total overtime hours
+
+Total late entries
+
+Absent count
+
+Perfect days
+
+Best streak
+
+Monthly performance score
+
+Productivity Index
+
+✅ Rewards Summary
+
+Total reward points
+
+Monthly points
+
+Badges earned
+
+Streak history
+
+Progress level
+
+✅ Admin Action Buttons
+
+Correct login time
+
+Correct logout time
+
+Add manual attendance
+
+Approve/reject leave
+
+Add holiday
+
+Add remarks/notes
+
+Download PDF
+
+✅ Nothing missed.
+
+✅ ✅ 5️⃣ ADMIN FLOW
+
+Admin opens dashboard → sees overall attendance
+
+Admin clicks “View Details” → individual detailed page
+
+Admin returns → back to full table
+
+✅ HR-friendly
+✅ Efficient
+✅ Modern
+
+🤖 6️⃣ AUTOMATION ENGINE – BACKEND CRON (NO MISSING TASKS)
+✅ DAILY AUTOMATION (6 PM–7 PM)
+
+Late/Very Late marking
+
+Absent marking
+
+Auto logout
+
+Working hour calculation
+
+Overtime calculation
+
+Daily score update
+
+Streak update
+
+Productivity update
+
+Daily summary email to employee
+
+Daily performance email to admin
+
+✅ WEEKLY AUTOMATION
+
+Weekly leaderboard
+
+Weekly report to admin
+
+Top performers
+
+Improvement suggestions
+
+✅ MONTHLY AUTOMATION
+
+Perfect Month badge
+
+Reliable Performer badge
+
+Early Bird badge
+
+Overtime Warrior badge
+
+Monthly leaderboard
+
+Monthly performance email
+
+(Optional) Reset points
+
+✅ No missing automation.
+
+🧠 7️⃣ COMPLETE DATABASE STRUCTURE (ALL TABLES)
+
+companies
+
+users
+
+attendance_logs
+
+attendance_rewards
+
+leaves
+
+holidays
+
+tasks_reports
+
+auto_tasks
+
+badges
+
+company_settings
+
+user_settings
+
+performance_scores
+
+streak_logs
+
+✅ NOTHING MISSED.
+
+🌐 8️⃣ MULTI-TENANT SUPPORT
+
+Each company has:
+
+Its own timezone
+
+Own attendance rules
+
+Own holidays
+
+Own reward system
+
+Own employees
+
+Own dashboards
+
+Own storage
+
+✅ Super Admin manages all companies.
+
+✅ ✅ 9️⃣ FINAL USER VS ADMIN COMPARISON (NO MISS)
+Feature	User	Admin
+Login	✅	❌
+Logout	✅	❌
+Submit report	✅	✅ View
+Edit attendance	❌	✅ Full control
+View self logs	✅	✅ All users
+View all employees	❌	✅
+Approve leave	❌	✅
+Add holiday	❌	✅
+Export reports	❌	✅
+Streaks	✅ View	✅ Monitor
+Points/Badges	✅ Earn	✅ Manage
+Analytics	❌	✅ Full analytics
+
+✅ NOTHING MISSING ✅
