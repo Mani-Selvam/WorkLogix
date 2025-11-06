@@ -8,7 +8,7 @@ import session from "express-session";
 import passport from "./passport";
 import dotenv from "dotenv";
 import cron from "node-cron";
-import { processDailyAttendance, processWeeklySummary, processMonthlyRewards, initializeBadges } from "./attendance-automation";
+import { processDailyAttendance, processWeeklySummary, processMonthlyRewards, initializeBadges, processAutoLogout } from "./attendance-automation";
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -89,6 +89,11 @@ async function initializeSuperAdmin() {
     
     await initializeSuperAdmin();
     await initializeBadges();
+    
+    cron.schedule('0 19 * * *', async () => {
+        log('[Cron] Running auto-logout processing...');
+        await processAutoLogout();
+    });
     
     cron.schedule('5 18 * * *', async () => {
         log('[Cron] Running daily attendance processing...');

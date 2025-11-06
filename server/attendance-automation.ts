@@ -1,5 +1,65 @@
 import { storage } from "./storage";
 
+export async function processAutoLogout() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const companies = await storage.getAllCompanies();
+    let totalAutoLogouts = 0;
+    
+    for (const company of companies) {
+      if (!company.isActive) continue;
+      
+      const todayLogs = await storage.getAttendanceLogsByCompany(company.id, today);
+      
+      const workEndTime = company.workEndTime || '18:00';
+      const [endHour, endMinute] = workEndTime.split(':').map(Number);
+      
+      const autoLogoutTime = new Date();
+      autoLogoutTime.setHours(endHour + 1, endMinute, 0, 0);
+      
+      const currentTime = new Date();
+      
+      if (currentTime < autoLogoutTime) continue;
+      
+      for (const log of todayLogs) {
+        if (log.loginTime && !log.logoutTime) {
+          await storage.updateAttendanceLog(log.id, {
+            logoutTime: autoLogoutTime,
+            autoLogout: true,
+            earlyLogoutReason: 'Auto-logout: User forgot to logout',
+          });
+          
+          await storage.updateAttendanceLogout(
+            log.userId,
+            company.id,
+            today,
+            autoLogoutTime
+          );
+          
+          totalAutoLogouts++;
+        }
+      }
+    }
+    
+    await storage.createAutoTask({
+      taskName: 'Auto Logout Processing',
+      taskType: 'daily',
+      status: 'completed',
+      details: `Auto-logged out ${totalAutoLogouts} users across ${companies.length} companies`,
+    });
+    
+    console.log(`[Cron] Auto logout completed: ${totalAutoLogouts} users`);
+  } catch (error) {
+    console.error('[Cron] Auto logout failed:', error);
+    await storage.createAutoTask({
+      taskName: 'Auto Logout Processing',
+      taskType: 'daily',
+      status: 'failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
 export async function processDailyAttendance() {
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -54,7 +114,10 @@ async function updateStreak(userId: number, companyId: number) {
   const lastAttendanceDate = reward.lastAttendanceDate;
   let newStreak = reward.currentStreak;
   
-  if (todayLog.status === 'on-time' || todayLog.status === 'present') {
+  const attendedStatuses = ['on-time', 'present', 'slightly-late', 'late', 'very-late'];
+  const isAttended = attendedStatuses.includes(todayLog.status);
+  
+  if (isAttended) {
     if (lastAttendanceDate) {
       const lastDate = new Date(lastAttendanceDate);
       const currentDate = new Date(today);

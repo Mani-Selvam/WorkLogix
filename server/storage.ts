@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens, adminActivityLogs, badges, attendanceLogs, attendanceRewards, autoTasks,
+  companies, users, tasks, reports, messages, ratings, fileUploads, archiveReports, groupMessages, taskTimeLogs, feedbacks, slotPricing, companyPayments, passwordResetTokens, adminActivityLogs, badges, attendanceLogs, attendanceRewards, autoTasks, leaves, holidays, tasksReports, attendanceIssues,
   type Company, type InsertCompany,
   type User, type InsertUser,
   type Task, type InsertTask,
@@ -19,7 +19,11 @@ import {
   type Badge, type InsertBadge,
   type AttendanceLog, type InsertAttendanceLog,
   type AttendanceReward, type InsertAttendanceReward,
-  type AutoTask, type InsertAutoTask
+  type AutoTask, type InsertAutoTask,
+  type Leave, type InsertLeave,
+  type Holiday, type InsertHoliday,
+  type TasksReport, type InsertTasksReport,
+  type AttendanceIssue, type InsertAttendanceIssue
 } from "@shared/schema";
 import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 
@@ -236,6 +240,36 @@ export interface IStorage {
     totalPoints: number;
     averageHours: number;
   }>;
+  
+  // Leave operations
+  createLeave(leave: InsertLeave): Promise<Leave>;
+  getLeavesByUserId(userId: number): Promise<Leave[]>;
+  getLeavesByCompanyId(companyId: number): Promise<Leave[]>;
+  getPendingLeaves(companyId: number): Promise<Leave[]>;
+  updateLeaveStatus(leaveId: number, status: string, approvedBy: number, remarks?: string): Promise<void>;
+  getLeaveById(id: number): Promise<Leave | null>;
+  
+  // Holiday operations
+  createHoliday(holiday: InsertHoliday): Promise<Holiday>;
+  getHolidaysByCompanyId(companyId: number): Promise<Holiday[]>;
+  getHolidayByDate(companyId: number, date: string): Promise<Holiday | null>;
+  deleteHoliday(id: number): Promise<void>;
+  updateHoliday(id: number, updates: Partial<InsertHoliday>): Promise<void>;
+  
+  // Tasks report operations
+  createTasksReport(report: InsertTasksReport): Promise<TasksReport>;
+  getTasksReportByDate(userId: number, date: string): Promise<TasksReport | null>;
+  getTasksReportsByUserId(userId: number): Promise<TasksReport[]>;
+  
+  // Attendance issue operations
+  createAttendanceIssue(issue: InsertAttendanceIssue): Promise<AttendanceIssue>;
+  getAttendanceIssuesByUserId(userId: number): Promise<AttendanceIssue[]>;
+  getPendingAttendanceIssues(companyId: number): Promise<AttendanceIssue[]>;
+  updateAttendanceIssueStatus(issueId: number, status: string, approvedBy: number, adminRemarks?: string): Promise<void>;
+  
+  // Enhanced attendance operations
+  updateAttendanceLog(logId: number, updates: Partial<InsertAttendanceLog>): Promise<void>;
+  getAttendanceLogById(id: number): Promise<AttendanceLog | null>;
 }
 
 export class DbStorage implements IStorage {
@@ -1191,20 +1225,35 @@ export class DbStorage implements IStorage {
 
     const workStartTime = company.workStartTime || '09:00';
     const lateEntryTime = company.lateEntryTime || '09:15';
+    const attendanceWindowEnd = company.attendanceWindowEnd || '10:00';
     
     const loginTimeStr = loginTime.toTimeString().substring(0, 5);
     
     let status = 'present';
+    let lateType: string | null = null;
     let isLate = false;
     let pointsEarned = 10;
     
-    if (loginTimeStr > lateEntryTime) {
+    if (loginTimeStr <= workStartTime) {
+      status = 'on-time';
+      lateType = null;
+      isLate = false;
+      pointsEarned = 10;
+    } else if (loginTimeStr > workStartTime && loginTimeStr <= lateEntryTime) {
+      status = 'slightly-late';
+      lateType = 'slightly-late';
+      isLate = true;
+      pointsEarned = 8;
+    } else if (loginTimeStr > lateEntryTime && loginTimeStr <= attendanceWindowEnd) {
       status = 'late';
+      lateType = 'late';
       isLate = true;
       pointsEarned = 5;
-    } else if (loginTimeStr <= workStartTime) {
-      status = 'on-time';
-      pointsEarned = 10;
+    } else {
+      status = 'very-late';
+      lateType = 'very-late';
+      isLate = true;
+      pointsEarned = 2;
     }
     
     const result = await db.insert(attendanceLogs).values({
@@ -1213,8 +1262,11 @@ export class DbStorage implements IStorage {
       date,
       loginTime,
       status,
+      lateType,
       isLate,
       pointsEarned,
+      reportSubmitted: false,
+      autoLogout: false,
     }).returning();
     
     const reward = await this.getOrCreateAttendanceReward(userId, companyId);
@@ -1487,6 +1539,146 @@ export class DbStorage implements IStorage {
     }
     
     return workingDays;
+  }
+
+  async createLeave(leave: InsertLeave): Promise<Leave> {
+    const result = await db.insert(leaves).values(leave).returning();
+    return result[0];
+  }
+
+  async getLeavesByUserId(userId: number): Promise<Leave[]> {
+    return await db.select().from(leaves)
+      .where(eq(leaves.userId, userId))
+      .orderBy(desc(leaves.createdAt));
+  }
+
+  async getLeavesByCompanyId(companyId: number): Promise<Leave[]> {
+    return await db.select().from(leaves)
+      .where(eq(leaves.companyId, companyId))
+      .orderBy(desc(leaves.createdAt));
+  }
+
+  async getPendingLeaves(companyId: number): Promise<Leave[]> {
+    return await db.select().from(leaves)
+      .where(and(
+        eq(leaves.companyId, companyId),
+        eq(leaves.status, 'pending')
+      ))
+      .orderBy(desc(leaves.createdAt));
+  }
+
+  async updateLeaveStatus(leaveId: number, status: string, approvedBy: number, remarks?: string): Promise<void> {
+    await db.update(leaves)
+      .set({ 
+        status, 
+        approvedBy, 
+        remarks,
+        updatedAt: new Date() 
+      })
+      .where(eq(leaves.id, leaveId));
+  }
+
+  async getLeaveById(id: number): Promise<Leave | null> {
+    const result = await db.select().from(leaves)
+      .where(eq(leaves.id, id))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createHoliday(holiday: InsertHoliday): Promise<Holiday> {
+    const result = await db.insert(holidays).values(holiday).returning();
+    return result[0];
+  }
+
+  async getHolidaysByCompanyId(companyId: number): Promise<Holiday[]> {
+    return await db.select().from(holidays)
+      .where(eq(holidays.companyId, companyId))
+      .orderBy(desc(holidays.date));
+  }
+
+  async getHolidayByDate(companyId: number, date: string): Promise<Holiday | null> {
+    const result = await db.select().from(holidays)
+      .where(and(
+        eq(holidays.companyId, companyId),
+        eq(holidays.date, date)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async deleteHoliday(id: number): Promise<void> {
+    await db.delete(holidays).where(eq(holidays.id, id));
+  }
+
+  async updateHoliday(id: number, updates: Partial<InsertHoliday>): Promise<void> {
+    await db.update(holidays)
+      .set(updates)
+      .where(eq(holidays.id, id));
+  }
+
+  async createTasksReport(report: InsertTasksReport): Promise<TasksReport> {
+    const result = await db.insert(tasksReports).values(report).returning();
+    return result[0];
+  }
+
+  async getTasksReportByDate(userId: number, date: string): Promise<TasksReport | null> {
+    const result = await db.select().from(tasksReports)
+      .where(and(
+        eq(tasksReports.userId, userId),
+        eq(tasksReports.date, date)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getTasksReportsByUserId(userId: number): Promise<TasksReport[]> {
+    return await db.select().from(tasksReports)
+      .where(eq(tasksReports.userId, userId))
+      .orderBy(desc(tasksReports.date));
+  }
+
+  async createAttendanceIssue(issue: InsertAttendanceIssue): Promise<AttendanceIssue> {
+    const result = await db.insert(attendanceIssues).values(issue).returning();
+    return result[0];
+  }
+
+  async getAttendanceIssuesByUserId(userId: number): Promise<AttendanceIssue[]> {
+    return await db.select().from(attendanceIssues)
+      .where(eq(attendanceIssues.userId, userId))
+      .orderBy(desc(attendanceIssues.createdAt));
+  }
+
+  async getPendingAttendanceIssues(companyId: number): Promise<AttendanceIssue[]> {
+    return await db.select().from(attendanceIssues)
+      .where(and(
+        eq(attendanceIssues.companyId, companyId),
+        eq(attendanceIssues.status, 'pending')
+      ))
+      .orderBy(desc(attendanceIssues.createdAt));
+  }
+
+  async updateAttendanceIssueStatus(issueId: number, status: string, approvedBy: number, adminRemarks?: string): Promise<void> {
+    await db.update(attendanceIssues)
+      .set({ 
+        status, 
+        approvedBy, 
+        adminRemarks,
+        updatedAt: new Date() 
+      })
+      .where(eq(attendanceIssues.id, issueId));
+  }
+
+  async updateAttendanceLog(logId: number, updates: Partial<InsertAttendanceLog>): Promise<void> {
+    await db.update(attendanceLogs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(attendanceLogs.id, logId));
+  }
+
+  async getAttendanceLogById(id: number): Promise<AttendanceLog | null> {
+    const result = await db.select().from(attendanceLogs)
+      .where(eq(attendanceLogs.id, id))
+      .limit(1);
+    return result[0] || null;
   }
 }
 

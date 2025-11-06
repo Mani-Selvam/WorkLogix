@@ -1,10 +1,17 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Trophy, Award, TrendingUp, Flame, Target, Star } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Calendar, Clock, Trophy, Award, TrendingUp, Flame, Target, Star, FileText, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
+import { useState } from "react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AttendanceLog {
   id: number;
@@ -46,10 +53,56 @@ interface BadgeData {
 
 export default function Attendance() {
   const { dbUserId, companyId } = useAuth();
+  const { toast } = useToast();
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [tasksCompleted, setTasksCompleted] = useState("");
+  const [notes, setNotes] = useState("");
 
   const { data: todayLog } = useQuery<AttendanceLog | null>({
     queryKey: ['/api/attendance/logs/today', dbUserId],
     enabled: !!dbUserId && !!companyId,
+  });
+
+  const { data: todayReport } = useQuery<any>({
+    queryKey: ['/api/tasks-report/today'],
+    enabled: !!dbUserId,
+  });
+
+  const submitReportMutation = useMutation({
+    mutationFn: async (data: { tasksCompleted: string; notes: string }) => {
+      const response = await fetch('/api/tasks-report/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': dbUserId?.toString() || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ companyId, ...data }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to submit report');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Report Submitted",
+        description: "Your daily work report has been submitted successfully. You can now logout early if needed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks-report/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs/today'] });
+      setReportDialogOpen(false);
+      setTasksCompleted("");
+      setNotes("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit work report. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: rewards } = useQuery<AttendanceReward>({
@@ -155,6 +208,79 @@ export default function Attendance() {
                 </p>
               </div>
             </div>
+            
+            {todayReport ? (
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <p className="font-semibold">Work Report Submitted</p>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You have submitted your daily work report. Early logout is now allowed.
+                </p>
+              </div>
+            ) : (
+              <div className="pt-4 border-t">
+                <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full" data-testid="button-submit-report">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Submit Daily Work Report
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[525px]">
+                    <DialogHeader>
+                      <DialogTitle>Submit Daily Work Report</DialogTitle>
+                      <DialogDescription>
+                        Submit your completed tasks for today. After submission, you'll be allowed to logout early if needed.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tasks">Tasks Completed Today *</Label>
+                        <Textarea
+                          id="tasks"
+                          placeholder="List the tasks you completed today..."
+                          value={tasksCompleted}
+                          onChange={(e) => setTasksCompleted(e.target.value)}
+                          className="min-h-[120px]"
+                          data-testid="input-tasks-completed"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                        <Textarea
+                          id="notes"
+                          placeholder="Any additional notes or comments..."
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          className="min-h-[80px]"
+                          data-testid="input-notes"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setReportDialogOpen(false)}
+                        className="flex-1"
+                        data-testid="button-cancel-report"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => submitReportMutation.mutate({ tasksCompleted, notes })}
+                        disabled={!tasksCompleted.trim() || submitReportMutation.isPending}
+                        className="flex-1"
+                        data-testid="button-confirm-submit-report"
+                      >
+                        {submitReportMutation.isPending ? "Submitting..." : "Submit Report"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

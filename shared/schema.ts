@@ -225,9 +225,14 @@ export const attendanceLogs = pgTable("attendance_logs", {
   status: varchar("status", { length: 20 }).notNull(),
   totalHours: integer("total_hours").default(0),
   isLate: boolean("is_late").notNull().default(false),
+  lateType: varchar("late_type", { length: 20 }),
   isOvertime: boolean("is_overtime").notNull().default(false),
   overtimeHours: integer("overtime_hours").default(0),
   pointsEarned: integer("points_earned").notNull().default(0),
+  reportSubmitted: boolean("report_submitted").notNull().default(false),
+  earlyLogoutReason: text("early_logout_reason"),
+  autoLogout: boolean("auto_logout").notNull().default(false),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -253,6 +258,59 @@ export const autoTasks = pgTable("auto_tasks", {
   status: varchar("status", { length: 20 }).notNull(),
   details: text("details"),
   executedAt: timestamp("executed_at").defaultNow().notNull(),
+});
+
+export const leaves = pgTable("leaves", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  leaveType: varchar("leave_type", { length: 50 }).notNull(),
+  startDate: varchar("start_date", { length: 10 }).notNull(),
+  endDate: varchar("end_date", { length: 10 }).notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const holidays = pgTable("holidays", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  description: text("description"),
+  isOptional: boolean("is_optional").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const tasksReports = pgTable("tasks_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  tasksCompleted: text("tasks_completed").notNull(),
+  notes: text("notes"),
+  submitTime: timestamp("submit_time").defaultNow().notNull(),
+  allowedEarlyLogout: boolean("allowed_early_logout").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const attendanceIssues = pgTable("attendance_issues", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  issueType: varchar("issue_type", { length: 50 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  requestedLoginTime: timestamp("requested_login_time"),
+  requestedLogoutTime: timestamp("requested_logout_time"),
+  explanation: text("explanation").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  adminRemarks: text("admin_remarks"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertCompanySchema = createInsertSchema(companies).omit({
@@ -525,3 +583,38 @@ export const insertAutoTaskSchema = createInsertSchema(autoTasks).omit({
 
 export type InsertAutoTask = z.infer<typeof insertAutoTaskSchema>;
 export type AutoTask = typeof autoTasks.$inferSelect;
+
+export const insertLeaveSchema = createInsertSchema(leaves).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLeave = z.infer<typeof insertLeaveSchema>;
+export type Leave = typeof leaves.$inferSelect;
+
+export const insertHolidaySchema = createInsertSchema(holidays).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHoliday = z.infer<typeof insertHolidaySchema>;
+export type Holiday = typeof holidays.$inferSelect;
+
+export const insertTasksReportSchema = createInsertSchema(tasksReports).omit({
+  id: true,
+  createdAt: true,
+  submitTime: true,
+});
+
+export type InsertTasksReport = z.infer<typeof insertTasksReportSchema>;
+export type TasksReport = typeof tasksReports.$inferSelect;
+
+export const insertAttendanceIssueSchema = createInsertSchema(attendanceIssues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAttendanceIssue = z.infer<typeof insertAttendanceIssueSchema>;
+export type AttendanceIssue = typeof attendanceIssues.$inferSelect;

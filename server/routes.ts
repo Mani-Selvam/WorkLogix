@@ -2458,6 +2458,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tasks-report/submit", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const { companyId, tasksCompleted, notes } = req.body;
+      
+      if (!companyId || !tasksCompleted) {
+        return res.status(400).json({ message: "Company ID and tasks completed are required" });
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      const existingReport = await storage.getTasksReportByDate(userId, today);
+      if (existingReport) {
+        return res.status(400).json({ message: "Report already submitted for today" });
+      }
+      
+      const report = await storage.createTasksReport({
+        userId,
+        companyId,
+        date: today,
+        tasksCompleted,
+        notes: notes || null,
+        allowedEarlyLogout: true,
+      });
+      
+      const attendanceLog = await storage.getAttendanceLog(userId, companyId, today);
+      if (attendanceLog) {
+        await storage.updateAttendanceLog(attendanceLog.id, {
+          reportSubmitted: true,
+        });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/tasks-report/today", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const today = new Date().toISOString().split('T')[0];
+      const report = await storage.getTasksReportByDate(userId, today);
+      res.json(report);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/tasks-report/user", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const reports = await storage.getTasksReportsByUserId(userId);
+      res.json(reports);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/attendance/logs", requireAuth, async (req, res, next) => {
     try {
       const userId = parseInt(req.headers["x-user-id"] as string);
