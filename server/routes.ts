@@ -2861,6 +2861,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Edit Attendance Times
+  app.post("/api/admin/attendance/edit-times", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can edit attendance times" });
+      }
+      
+      const { logId, loginTime, logoutTime } = req.body;
+      
+      if (!logId) {
+        return res.status(400).json({ message: "Log ID is required" });
+      }
+      
+      const log = await storage.getAttendanceLogById(logId);
+      if (!log) {
+        return res.status(404).json({ message: "Attendance log not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== log.companyId) {
+        return res.status(403).json({ message: "You can only edit attendance for your own company" });
+      }
+      
+      if (!loginTime && !logoutTime) {
+        return res.status(400).json({ message: "At least one time (login or logout) must be provided" });
+      }
+      
+      const finalLoginTime = loginTime ? new Date(loginTime) : log.loginTime ? new Date(log.loginTime) : null;
+      const finalLogoutTime = logoutTime ? new Date(logoutTime) : log.logoutTime ? new Date(log.logoutTime) : null;
+      
+      if (finalLoginTime && finalLogoutTime && finalLoginTime >= finalLogoutTime) {
+        return res.status(400).json({ message: "Login time must be before logout time" });
+      }
+      
+      const updateData: any = {};
+      
+      if (finalLoginTime && finalLogoutTime) {
+        updateData.loginTime = finalLoginTime;
+        updateData.logoutTime = finalLogoutTime;
+        const hours = Math.round((finalLogoutTime.getTime() - finalLoginTime.getTime()) / (1000 * 60 * 60));
+        updateData.totalHours = hours;
+      } else if (loginTime) {
+        updateData.loginTime = new Date(loginTime);
+      } else if (logoutTime) {
+        updateData.logoutTime = new Date(logoutTime);
+      }
+      
+      await storage.updateAttendanceLog(logId, updateData);
+      
+      res.json({ message: "Attendance times updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Admin: Add Remarks to Attendance
+  app.post("/api/admin/attendance/add-remarks", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can add remarks" });
+      }
+      
+      const { logId, remarks } = req.body;
+      
+      if (!logId) {
+        return res.status(400).json({ message: "Log ID is required" });
+      }
+      
+      const log = await storage.getAttendanceLogById(logId);
+      if (!log) {
+        return res.status(404).json({ message: "Attendance log not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== log.companyId) {
+        return res.status(403).json({ message: "You can only add remarks for your own company" });
+      }
+      
+      await storage.updateAttendanceLog(logId, { notes: remarks });
+      
+      res.json({ message: "Remarks added successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Attendance Issue Correction Requests
   app.post("/api/attendance-issues", requireAuth, async (req, res, next) => {
     try {

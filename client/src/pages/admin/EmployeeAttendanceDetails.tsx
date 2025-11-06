@@ -1,12 +1,19 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, Clock, Trophy, TrendingUp, Award, User } from "lucide-react";
+import { Calendar, Clock, Trophy, TrendingUp, Award, User, Edit, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmployeeProfile {
   employee: {
@@ -63,11 +70,100 @@ export default function EmployeeAttendanceDetails() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const userId = parseInt(params.userId as string);
+  const { toast } = useToast();
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [remarksDialogOpen, setRemarksDialogOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [loginTime, setLoginTime] = useState("");
+  const [logoutTime, setLogoutTime] = useState("");
+  const [remarks, setRemarks] = useState("");
 
   const { data: profile, isLoading } = useQuery<EmployeeProfile>({
     queryKey: [`/api/admin/employee/${userId}/attendance-profile`],
     enabled: !!userId,
   });
+
+  const editTimesMutation = useMutation({
+    mutationFn: async (data: { logId: number; loginTime?: string; logoutTime?: string }) => {
+      return await apiRequest("POST", "/api/admin/attendance/edit-times", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Attendance times updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/employee/${userId}/attendance-profile`] });
+      setEditDialogOpen(false);
+      setSelectedLog(null);
+      setLoginTime("");
+      setLogoutTime("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update attendance times",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addRemarksMutation = useMutation({
+    mutationFn: async (data: { logId: number; remarks: string }) => {
+      return await apiRequest("POST", "/api/admin/attendance/add-remarks", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Remarks added successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/employee/${userId}/attendance-profile`] });
+      setRemarksDialogOpen(false);
+      setSelectedLog(null);
+      setRemarks("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add remarks",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditClick = (log: any) => {
+    setSelectedLog(log);
+    setLoginTime(log.loginTime ? format(new Date(log.loginTime), "HH:mm") : "");
+    setLogoutTime(log.logoutTime ? format(new Date(log.logoutTime), "HH:mm") : "");
+    setEditDialogOpen(true);
+  };
+
+  const handleRemarksClick = (log: any) => {
+    setSelectedLog(log);
+    setRemarks(log.notes || "");
+    setRemarksDialogOpen(true);
+  };
+
+  const handleSaveTimes = () => {
+    if (!selectedLog) return;
+    
+    const loginDateTime = loginTime ? `${selectedLog.date}T${loginTime}:00` : undefined;
+    const logoutDateTime = logoutTime ? `${selectedLog.date}T${logoutTime}:00` : undefined;
+    
+    editTimesMutation.mutate({
+      logId: selectedLog.id,
+      loginTime: loginDateTime,
+      logoutTime: logoutDateTime,
+    });
+  };
+
+  const handleSaveRemarks = () => {
+    if (!selectedLog) return;
+    addRemarksMutation.mutate({
+      logId: selectedLog.id,
+      remarks,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -249,12 +345,13 @@ export default function EmployeeAttendanceDetails() {
                   <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Points</th>
                   <th className="text-left p-2">Report</th>
+                  <th className="text-left p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {profile.attendanceLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center p-8 text-muted-foreground">
+                    <td colSpan={8} className="text-center p-8 text-muted-foreground">
                       No attendance records for this month
                     </td>
                   </tr>
@@ -282,6 +379,28 @@ export default function EmployeeAttendanceDetails() {
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditClick(log)}
+                            data-testid={`button-edit-${log.id}`}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemarksClick(log)}
+                            data-testid={`button-remarks-${log.id}`}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            Remarks
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -311,6 +430,102 @@ export default function EmployeeAttendanceDetails() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Times Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-times">
+          <DialogHeader>
+            <DialogTitle>Edit Attendance Times</DialogTitle>
+            <DialogDescription>
+              Correct the login and logout times for {selectedLog && format(new Date(selectedLog.date), "MMMM dd, yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="login-time">Login Time</Label>
+              <Input
+                id="login-time"
+                type="time"
+                value={loginTime}
+                onChange={(e) => setLoginTime(e.target.value)}
+                data-testid="input-login-time"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="logout-time">Logout Time</Label>
+              <Input
+                id="logout-time"
+                type="time"
+                value={logoutTime}
+                onChange={(e) => setLogoutTime(e.target.value)}
+                data-testid="input-logout-time"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              data-testid="button-cancel-edit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveTimes}
+              disabled={editTimesMutation.isPending}
+              data-testid="button-save-times"
+            >
+              {editTimesMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remarks Dialog */}
+      <Dialog open={remarksDialogOpen} onOpenChange={setRemarksDialogOpen}>
+        <DialogContent data-testid="dialog-remarks">
+          <DialogHeader>
+            <DialogTitle>Add Remarks</DialogTitle>
+            <DialogDescription>
+              Add admin remarks/notes for {selectedLog && format(new Date(selectedLog.date), "MMMM dd, yyyy")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="remarks">Remarks/Notes</Label>
+              <Textarea
+                id="remarks"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Enter remarks or notes about this attendance record..."
+                className="min-h-[120px]"
+                data-testid="input-remarks"
+              />
+              {selectedLog?.notes && (
+                <p className="text-xs text-muted-foreground">
+                  Current notes: {selectedLog.notes}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setRemarksDialogOpen(false)}
+              data-testid="button-cancel-remarks"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveRemarks}
+              disabled={addRemarksMutation.isPending}
+              data-testid="button-save-remarks"
+            >
+              {addRemarksMutation.isPending ? "Saving..." : "Save Remarks"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
