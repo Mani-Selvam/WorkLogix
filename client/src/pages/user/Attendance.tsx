@@ -21,9 +21,12 @@ interface AttendanceLog {
   status: string;
   totalHours: number;
   isLate: boolean;
+  lateType: string | null;
   isOvertime: boolean;
   overtimeHours: number;
   pointsEarned: number;
+  earlyLogoutReason: string | null;
+  reportSubmitted: boolean;
 }
 
 interface AttendanceReward {
@@ -165,7 +168,7 @@ export default function Attendance() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Today's Status
+              Today's Real-Time Attendance
             </CardTitle>
             <CardDescription>
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
@@ -178,6 +181,11 @@ export default function Attendance() {
                 <Badge className={getStatusColor(todayLog.status)} data-testid="badge-today-status">
                   {todayLog.status.toUpperCase()}
                 </Badge>
+                {todayLog.lateType && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1" data-testid="text-late-type">
+                    {todayLog.lateType}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Login Time</p>
@@ -194,11 +202,17 @@ export default function Attendance() {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Total Hours</p>
                 <p className="text-2xl font-bold text-primary" data-testid="text-total-hours">
                   {todayLog.totalHours || 0} hrs
+                </p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Overtime Hours</p>
+                <p className={`text-2xl font-bold ${todayLog.isOvertime ? 'text-orange-600' : 'text-muted-foreground'}`} data-testid="text-overtime-hours">
+                  {todayLog.isOvertime ? `+${todayLog.overtimeHours} hrs` : '0 hrs'}
                 </p>
               </div>
               <div className="space-y-2">
@@ -208,6 +222,15 @@ export default function Attendance() {
                 </p>
               </div>
             </div>
+            
+            {todayLog.earlyLogoutReason && (
+              <div className="pt-2 border-t bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Early Logout Reason</p>
+                <p className="text-sm font-medium mt-1" data-testid="text-early-logout-reason">
+                  {todayLog.earlyLogoutReason}
+                </p>
+              </div>
+            )}
             
             {todayReport ? (
               <div className="pt-4 border-t">
@@ -285,7 +308,7 @@ export default function Attendance() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/20 dark:to-background" data-testid="card-current-streak">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
@@ -327,6 +350,21 @@ export default function Attendance() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Lifetime rewards
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background" data-testid="card-productivity">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Productivity Level</CardTitle>
+            <TrendingUp className="h-5 w-5 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600" data-testid="text-productivity-score">
+              {rewards?.monthlyScore || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Monthly score
             </p>
           </CardContent>
         </Card>
