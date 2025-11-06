@@ -1,4 +1,25 @@
 import { storage } from "./storage";
+import { sendDailyAttendanceSummary, sendMonthlyAchievementEmail, sendWeeklySummaryEmail } from "./email";
+
+function calculateDailyPoints(status: string, totalHours: number): number {
+  let points = 0;
+  
+  if (status === 'on-time' || status === 'present') {
+    points = 10;
+  } else if (status === 'slightly-late') {
+    points = 7;
+  } else if (status === 'late') {
+    points = 5;
+  } else if (status === 'very-late') {
+    points = 3;
+  }
+  
+  if (totalHours >= 9) {
+    points += 5;
+  }
+  
+  return points;
+}
 
 export async function processAutoLogout() {
   try {
@@ -102,6 +123,28 @@ export async function processDailyAttendance() {
       for (const member of activeMembers) {
         await updateStreak(member.id, company.id);
       }
+      
+      for (const log of todayLogs) {
+        if (log.logoutTime) {
+          const user = activeMembers.find(m => m.id === log.userId);
+          if (user && user.email) {
+            const reward = await storage.getAttendanceRewardByUser(user.id);
+            const totalHours = log.totalHours || 0;
+            const pointsEarned = calculateDailyPoints(log.status, totalHours);
+            
+            await sendDailyAttendanceSummary({
+              userName: user.displayName,
+              userEmail: user.email,
+              status: log.status,
+              loginTime: log.loginTime ? new Date(log.loginTime).toLocaleTimeString() : 'N/A',
+              totalHours,
+              pointsEarned,
+              currentStreak: reward?.currentStreak || 0,
+              totalPoints: reward?.totalPoints || 0,
+            });
+          }
+        }
+      }
     }
     
     await storage.createAutoTask({
@@ -198,6 +241,32 @@ export async function processWeeklySummary() {
       const logs = await storage.getAttendanceLogsByDateRange(company.id, startDate, endDate);
       const topPerformers = await storage.getTopPerformers(company.id, 5);
       
+      const allMembers = await storage.getUsersByCompanyId(company.id);
+      const activeMembers = allMembers.filter(u => u.role === 'company_member' && u.isActive);
+      const totalEmployees = activeMembers.length;
+      
+      const attendedLogs = logs.filter(log => log.status !== 'absent');
+      const avgAttendanceRate = totalEmployees > 0 ? (attendedLogs.length / (totalEmployees * 7)) * 100 : 0;
+      
+      const adminUsers = allMembers.filter(u => u.role === 'company_admin' && u.isActive);
+      for (const admin of adminUsers) {
+        if (admin.email) {
+          await sendWeeklySummaryEmail({
+            companyName: company.name,
+            adminEmail: admin.email,
+            totalEmployees,
+            avgAttendanceRate,
+            topPerformers: topPerformers.map(p => ({
+              name: p.user.displayName,
+              points: p.totalPoints,
+              streak: p.currentStreak,
+            })),
+            weekStartDate: new Date(startDate).toLocaleDateString(),
+            weekEndDate: new Date(endDate).toLocaleDateString(),
+          });
+        }
+      }
+      
       console.log(`[Cron] Weekly summary for ${company.name}: ${logs.length} attendance records, ${topPerformers.length} top performers`);
     }
     
@@ -234,9 +303,11 @@ export async function processMonthlyRewards() {
       
       for (const member of activeMembers) {
         const monthlyReport = await storage.getMonthlyAttendanceReport(member.id, currentMonth, currentYear);
+        const newBadges: string[] = [];
         
         if (monthlyReport.absentDays === 0 && monthlyReport.presentDays === monthlyReport.totalDays) {
           await storage.assignBadge(member.id, 'Perfect Month');
+          newBadges.push('Perfect Month');
           
           const reward = await storage.getAttendanceRewardByUser(member.id);
           if (reward) {
@@ -249,11 +320,25 @@ export async function processMonthlyRewards() {
         
         if (monthlyReport.lateDays === 0 && monthlyReport.absentDays === 0) {
           await storage.assignBadge(member.id, 'Reliable Performer');
+          newBadges.push('Reliable Performer');
         }
         
         await storage.updateAttendanceReward(member.id, {
           monthlyScore: 0,
         });
+        
+        const reward = await storage.getAttendanceRewardByUser(member.id);
+        if (reward && member.email) {
+          await sendMonthlyAchievementEmail({
+            userName: member.displayName,
+            userEmail: member.email,
+            badges: newBadges,
+            totalPoints: reward.totalPoints,
+            presentDays: monthlyReport.presentDays,
+            perfectMonths: reward.perfectMonths,
+            currentStreak: reward.currentStreak,
+          });
+        }
       }
     }
     

@@ -570,6 +570,98 @@ export async function sendDailyAttendanceSummary(attendanceData: {
   }
 }
 
+export async function sendWeeklySummaryEmail(summaryData: {
+  companyName: string;
+  adminEmail: string;
+  totalEmployees: number;
+  avgAttendanceRate: number;
+  topPerformers: Array<{ name: string; points: number; streak: number }>;
+  weekStartDate: string;
+  weekEndDate: string;
+}) {
+  try {
+    const transporter = getEmailTransporter();
+    if (!transporter) {
+      console.log('[EMAIL] Skipping weekly summary email - email not configured');
+      return;
+    }
+    const fromEmail = process.env.EMAIL_USER!;
+    
+    const performersList = summaryData.topPerformers.map((performer, index) => `
+      <tr>
+        <td style="padding: 10px; color: #666; font-size: 14px;">#${index + 1}</td>
+        <td style="padding: 10px; color: #333; font-size: 14px; font-weight: bold;">${performer.name}</td>
+        <td style="padding: 10px; color: #10B981; font-size: 14px; text-align: right;">${performer.points} pts</td>
+        <td style="padding: 10px; color: #F59E0B; font-size: 14px; text-align: right;">🔥 ${performer.streak}</td>
+      </tr>
+    `).join('');
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">📊 Weekly Attendance Summary</h1>
+            <p style="color: #666; font-size: 14px; margin: 10px 0;">${summaryData.weekStartDate} - ${summaryData.weekEndDate}</p>
+          </div>
+          
+          <p style="font-size: 16px; color: #333;">Hello <strong>${summaryData.companyName}</strong> Admin,</p>
+          <p style="font-size: 14px; color: #666; line-height: 1.6;">Here's your weekly attendance summary:</p>
+          
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+            <p style="color: white; font-size: 14px; margin: 0 0 10px 0; opacity: 0.9;">Average Attendance Rate:</p>
+            <p style="font-size: 48px; font-weight: bold; color: white; margin: 0;">${summaryData.avgAttendanceRate.toFixed(1)}%</p>
+          </div>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #333; margin-top: 0; font-size: 16px;">📈 Company Stats:</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; color: #666; font-size: 14px;">Total Employees:</td>
+                <td style="padding: 10px; color: #333; font-size: 16px; font-weight: bold; text-align: right;">${summaryData.totalEmployees}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${summaryData.topPerformers.length > 0 ? `
+            <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 20px; margin: 20px 0; border-radius: 4px;">
+              <h3 style="color: #92400E; margin-top: 0; font-size: 16px;">🏆 Top Performers This Week:</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #F59E0B;">
+                    <th style="padding: 10px; text-align: left; color: #92400E; font-size: 12px;">Rank</th>
+                    <th style="padding: 10px; text-align: left; color: #92400E; font-size: 12px;">Name</th>
+                    <th style="padding: 10px; text-align: right; color: #92400E; font-size: 12px;">Points</th>
+                    <th style="padding: 10px; text-align: right; color: #92400E; font-size: 12px;">Streak</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${performersList}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666;">Best regards,<br/><strong>The WorkLogix Team</strong></p>
+          <p style="font-size: 12px; color: #9CA3AF; margin-top: 20px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"WorkLogix Attendance" <${fromEmail}>`,
+      to: summaryData.adminEmail,
+      subject: `📊 Weekly Attendance Summary - ${summaryData.weekStartDate}`,
+      html: htmlContent,
+    });
+
+    console.log(`[EMAIL] Weekly summary email sent to ${summaryData.adminEmail}`);
+  } catch (error) {
+    console.error('[EMAIL] Error sending weekly summary email:', error);
+  }
+}
+
 export async function sendMonthlyAchievementEmail(achievementData: {
   userName: string;
   userEmail: string;
