@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar, Clock, Trophy, Award, TrendingUp, Flame, Target, Star, FileText, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Trophy, Award, TrendingUp, Flame, Target, Star, FileText, CheckCircle, LogIn, LogOut, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AttendanceLog {
   id: number;
@@ -60,10 +61,77 @@ export default function Attendance() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [tasksCompleted, setTasksCompleted] = useState("");
   const [notes, setNotes] = useState("");
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  const { data: todayLog } = useQuery<AttendanceLog | null>({
+  const { data: todayLog, refetch: refetchTodayLog } = useQuery<AttendanceLog | null>({
     queryKey: ['/api/attendance/logs/today', dbUserId],
     enabled: !!dbUserId && !!companyId,
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!todayLog) return;
+    const intervalId = setInterval(() => {
+      refetchTodayLog();
+    }, 10000);
+    return () => clearInterval(intervalId);
+  }, [todayLog, refetchTodayLog]);
+
+  const loginMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/attendance/mark', {
+        method: 'POST',
+        body: JSON.stringify({ companyId }),
+      });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Login Successful!",
+        description: `Attendance marked as ${data.status.toUpperCase()}. ${data.lateType ? `Late type: ${data.lateType}` : 'You are on time!'}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/rewards'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Failed to mark attendance. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      return await apiRequest('/api/attendance/logout', {
+        method: 'POST',
+        body: JSON.stringify({ companyId, date: today }),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Logout Successful!",
+        description: "Your working hours and overtime have been calculated. See you tomorrow!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/rewards'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Logout Failed",
+        description: error.message || "Failed to mark logout. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: todayReport } = useQuery<any>({
@@ -153,6 +221,25 @@ export default function Attendance() {
     ? Math.round((monthlyReport.presentDays / monthlyReport.totalDays) * 100)
     : 0;
 
+  const hasLoggedIn = !!todayLog && !!todayLog.loginTime;
+  const hasLoggedOut = !!todayLog && !!todayLog.logoutTime;
+  const canLogin = !hasLoggedIn;
+  const canLogout = hasLoggedIn && !hasLoggedOut;
+
+  const getTimeStatus = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    
+    if (timeStr <= '09:00') return { status: 'on-time', color: 'text-green-600', message: 'You are on time!' };
+    if (timeStr <= '09:15') return { status: 'slightly-late', color: 'text-yellow-600', message: 'Slightly late, but within grace period' };
+    if (timeStr <= '10:00') return { status: 'late', color: 'text-orange-600', message: 'You are late. Please login to start work.' };
+    return { status: 'very-late', color: 'text-red-600', message: 'Very late. You can still login and work.' };
+  };
+
+  const timeStatus = getTimeStatus();
+
   return (
     <div className="space-y-6 p-6 bg-background" data-testid="page-attendance">
       <div className="flex items-center justify-between">
@@ -162,6 +249,90 @@ export default function Attendance() {
         </div>
         <Award className="h-12 w-12 text-primary" />
       </div>
+
+      <Card className="border-2 border-primary bg-gradient-to-r from-primary/10 via-background to-primary/10" data-testid="card-attendance-controls">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Attendance Controls
+            </span>
+            <span className="text-lg font-mono" data-testid="text-current-time">
+              {format(currentTime, 'hh:mm:ss a')}
+            </span>
+          </CardTitle>
+          <CardDescription>
+            Mark your login and logout for today - Server Time: {format(currentTime, 'PPP')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!hasLoggedIn && (
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20" data-testid="alert-login-reminder">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className={`${timeStatus.color} font-medium`}>
+                Current Status: {timeStatus.message}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button
+              size="lg"
+              className="flex-1 h-16 text-lg font-semibold"
+              onClick={() => loginMutation.mutate()}
+              disabled={!canLogin || loginMutation.isPending}
+              variant={canLogin ? "default" : "outline"}
+              data-testid="button-login-attendance"
+            >
+              {loginMutation.isPending ? (
+                <><Clock className="mr-2 h-5 w-5 animate-spin" /> Marking Login...</>
+              ) : hasLoggedIn ? (
+                <><CheckCircle className="mr-2 h-5 w-5" /> Already Logged In</>
+              ) : (
+                <><LogIn className="mr-2 h-5 w-5" /> LOGIN NOW</>
+              )}
+            </Button>
+
+            <Button
+              size="lg"
+              className="flex-1 h-16 text-lg font-semibold"
+              onClick={() => logoutMutation.mutate()}
+              disabled={!canLogout || logoutMutation.isPending}
+              variant={canLogout ? "destructive" : "outline"}
+              data-testid="button-logout-attendance"
+            >
+              {logoutMutation.isPending ? (
+                <><Clock className="mr-2 h-5 w-5 animate-spin" /> Marking Logout...</>
+              ) : hasLoggedOut ? (
+                <><CheckCircle className="mr-2 h-5 w-5" /> Already Logged Out</>
+              ) : !hasLoggedIn ? (
+                <><AlertCircle className="mr-2 h-5 w-5" /> Please Login First</>
+              ) : (
+                <><LogOut className="mr-2 h-5 w-5" /> LOGOUT NOW</>
+              )}
+            </Button>
+          </div>
+
+          {hasLoggedIn && !hasLoggedOut && (
+            <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20" data-testid="alert-logout-reminder">
+              <Clock className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800 dark:text-orange-200">
+                <strong>Don't forget to logout!</strong> Your working hours will be calculated when you logout. 
+                {todayReport && " You've submitted your report - you can logout early if needed."}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {hasLoggedIn && hasLoggedOut && (
+            <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20" data-testid="alert-day-complete">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                <strong>Great work today!</strong> Your attendance has been recorded. See you tomorrow!
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       {todayLog && (
         <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background" data-testid="card-today-status">
