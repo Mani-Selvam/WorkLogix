@@ -1,13 +1,15 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle, Eye } from "lucide-react";
+import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle, Eye, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
+import { useState, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AttendanceStats {
   totalEmployees: number;
@@ -26,10 +28,16 @@ interface CompanyAttendanceLog {
   status: string;
   totalHours: number;
   isLate: boolean;
+  isOvertime: boolean;
+  overtimeHours: number;
   pointsEarned: number;
+  reportSubmitted: boolean;
   user: {
+    id: number;
     displayName: string;
     photoURL: string | null;
+    role: string;
+    email: string;
   };
 }
 
@@ -47,14 +55,33 @@ export default function AttendanceOverview() {
   const { companyId } = useAuth();
   const [, setLocation] = useLocation();
   const today = new Date().toISOString().split('T')[0];
+  
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [overtimeFilter, setOvertimeFilter] = useState<string>("all");
+  const [reportFilter, setReportFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const { data: stats, isLoading: statsLoading } = useQuery<AttendanceStats>({
     queryKey: ['/api/attendance/stats', companyId, today],
     enabled: !!companyId,
   });
 
+  const useDateRange = startDate && endDate;
+  const displayDate = startDate || today;
+  
   const { data: todayLogs } = useQuery<CompanyAttendanceLog[]>({
-    queryKey: ['/api/attendance/company', companyId, today],
+    queryKey: useDateRange 
+      ? ['/api/attendance/company', companyId, 'date-range', { startDate, endDate }]
+      : ['/api/attendance/company', companyId, displayDate],
+    queryFn: useDateRange
+      ? async () => {
+          const response = await fetch(`/api/attendance/company/${companyId}/date-range?startDate=${startDate}&endDate=${endDate}`);
+          if (!response.ok) throw new Error('Failed to fetch date range');
+          return response.json();
+        }
+      : undefined,
     enabled: !!companyId,
   });
 
@@ -62,6 +89,28 @@ export default function AttendanceOverview() {
     queryKey: ['/api/attendance/top-performers', companyId],
     enabled: !!companyId,
   });
+
+  const filteredLogs = useMemo(() => {
+    if (!todayLogs) return [];
+    
+    return todayLogs.filter(log => {
+      if (statusFilter !== "all") {
+        if (statusFilter === "present" && log.status !== "present" && log.status !== "on-time") return false;
+        if (statusFilter === "late" && log.status !== "late" && log.status !== "slightly-late" && log.status !== "very-late") return false;
+        if (statusFilter === "absent" && log.status !== "absent") return false;
+      }
+      
+      if (overtimeFilter === "overtime" && !log.isOvertime) return false;
+      if (overtimeFilter === "no-overtime" && log.isOvertime) return false;
+      
+      if (reportFilter === "submitted" && !log.reportSubmitted) return false;
+      if (reportFilter === "not-submitted" && log.reportSubmitted) return false;
+      
+      if (departmentFilter !== "all" && log.user.role !== departmentFilter) return false;
+      
+      return true;
+    });
+  }, [todayLogs, statusFilter, overtimeFilter, reportFilter, departmentFilter, startDate, endDate]);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
@@ -288,24 +337,116 @@ export default function AttendanceOverview() {
 
       <Card data-testid="card-live-attendance">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Live Attendance Tracker
-          </CardTitle>
-          <CardDescription>
-            Real-time status of all employees
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Live Attendance Tracker
+              </CardTitle>
+              <CardDescription>
+                Real-time status of all employees for {format(new Date(), 'MMMM d, yyyy')}
+              </CardDescription>
+            </div>
+            <Filter className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="flex gap-3 mt-4 flex-wrap">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]" data-testid="filter-status">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="late">Late</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={overtimeFilter} onValueChange={setOvertimeFilter}>
+              <SelectTrigger className="w-[150px]" data-testid="filter-overtime">
+                <SelectValue placeholder="All Overtime" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Overtime</SelectItem>
+                <SelectItem value="overtime">Has Overtime</SelectItem>
+                <SelectItem value="no-overtime">No Overtime</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={reportFilter} onValueChange={setReportFilter}>
+              <SelectTrigger className="w-[150px]" data-testid="filter-report">
+                <SelectValue placeholder="All Reports" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Reports</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="not-submitted">Not Submitted</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-[150px]" data-testid="filter-department">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="company_member">Company Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="company_admin">Company Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <div className="flex gap-2 items-center">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="flex h-9 w-[150px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Start Date"
+                data-testid="input-start-date"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="flex h-9 w-[150px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="End Date"
+                data-testid="input-end-date"
+              />
+            </div>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setStatusFilter("all");
+                setOvertimeFilter("all");
+                setReportFilter("all");
+                setDepartmentFilter("all");
+                setStartDate("");
+                setEndDate("");
+              }}
+              data-testid="button-clear-filters"
+            >
+              Clear Filters
+            </Button>
+            
+            <div className="ml-auto text-sm text-muted-foreground">
+              Showing {filteredLogs.length} of {todayLogs?.length || 0} employees
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {todayLogs && todayLogs.length > 0 ? (
-              todayLogs.map((log, index) => (
+            {filteredLogs && filteredLogs.length > 0 ? (
+              filteredLogs.map((log, index) => (
                 <div 
                   key={log.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors gap-4"
                   data-testid={`log-${index}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-[200px]">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={log.user.photoURL || ''} />
                       <AvatarFallback>{log.user.displayName[0]}</AvatarFallback>
@@ -314,22 +455,50 @@ export default function AttendanceOverview() {
                       <p className="font-medium" data-testid={`log-name-${index}`}>
                         {log.user.displayName}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Login: {formatTime(log.loginTime)} • Logout: {formatTime(log.logoutTime)}
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {log.user.role.replace('_', ' ')}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{log.totalHours || 0} hrs</p>
-                      <p className="text-xs text-muted-foreground">+{log.pointsEarned} pts</p>
+
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="text-sm">
+                      <p className="text-muted-foreground text-xs">Login</p>
+                      <p className="font-medium">{formatTime(log.loginTime)}</p>
                     </div>
+                    <div className="text-sm">
+                      <p className="text-muted-foreground text-xs">Logout</p>
+                      <p className="font-medium">{formatTime(log.logoutTime)}</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-muted-foreground text-xs">Hours</p>
+                      <p className="font-medium">{log.totalHours || 0} hrs</p>
+                    </div>
+                    
+                    {log.isOvertime && (
+                      <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                        OT: +{log.overtimeHours || 0}h
+                      </Badge>
+                    )}
+                    
+                    {log.reportSubmitted && (
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        Report ✓
+                      </Badge>
+                    )}
+                    
+                    <div className="text-sm">
+                      <p className="text-muted-foreground text-xs">Points</p>
+                      <p className="font-semibold text-green-600">+{log.pointsEarned}</p>
+                    </div>
+                    
                     <Badge className={getStatusColor(log.status)} data-testid={`log-status-${index}`}>
                       <span className="flex items-center gap-1">
                         {getStatusIcon(log.status)}
                         {log.status}
                       </span>
                     </Badge>
+                    
                     <Button
                       variant="outline"
                       size="sm"
@@ -337,7 +506,7 @@ export default function AttendanceOverview() {
                       data-testid={`button-view-details-${index}`}
                     >
                       <Eye className="h-4 w-4 mr-1" />
-                      View Details
+                      Details
                     </Button>
                   </div>
                 </div>

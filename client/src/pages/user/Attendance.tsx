@@ -462,6 +462,125 @@ export default function Attendance() {
         </CardContent>
       </Card>
 
+      <Card data-testid="card-monthly-calendar">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Monthly Calendar
+          </CardTitle>
+          <CardDescription>
+            {format(new Date(), 'MMMM yyyy')} - Color-coded attendance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2">
+              <div className="text-muted-foreground">Sun</div>
+              <div className="text-muted-foreground">Mon</div>
+              <div className="text-muted-foreground">Tue</div>
+              <div className="text-muted-foreground">Wed</div>
+              <div className="text-muted-foreground">Thu</div>
+              <div className="text-muted-foreground">Fri</div>
+              <div className="text-muted-foreground">Sat</div>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-2">
+              {(() => {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth();
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const days = [];
+                
+                for (let i = 0; i < firstDay; i++) {
+                  days.push(
+                    <div key={`empty-${i}`} className="aspect-square"></div>
+                  );
+                }
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const dayLog = recentLogs?.find(log => log.date === dateStr);
+                  const isToday = dateStr === new Date().toISOString().split('T')[0];
+                  
+                  let bgColor = 'bg-gray-100 dark:bg-gray-800';
+                  let textColor = 'text-gray-400 dark:text-gray-600';
+                  let title = 'No data';
+                  
+                  if (dayLog) {
+                    if (dayLog.status === 'present' || dayLog.status === 'on-time') {
+                      bgColor = 'bg-green-100 dark:bg-green-900/30';
+                      textColor = 'text-green-800 dark:text-green-200';
+                      title = 'Present';
+                      if (dayLog.reportSubmitted) {
+                        bgColor = 'bg-blue-100 dark:bg-blue-900/30';
+                        textColor = 'text-blue-800 dark:text-blue-200';
+                        title = 'Present + Report';
+                      }
+                    } else if (dayLog.status === 'late' || dayLog.status === 'slightly-late' || dayLog.status === 'very-late') {
+                      bgColor = 'bg-yellow-100 dark:bg-yellow-900/30';
+                      textColor = 'text-yellow-800 dark:text-yellow-200';
+                      title = 'Late';
+                    } else if (dayLog.status === 'absent') {
+                      bgColor = 'bg-red-100 dark:bg-red-900/30';
+                      textColor = 'text-red-800 dark:text-red-200';
+                      title = 'Absent';
+                    }
+                    
+                    if (dayLog.isOvertime) {
+                      bgColor = 'bg-orange-100 dark:bg-orange-900/30';
+                      textColor = 'text-orange-800 dark:text-orange-200';
+                      title += ' + Overtime';
+                    }
+                  }
+                  
+                  days.push(
+                    <div
+                      key={day}
+                      className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${bgColor} ${textColor} ${isToday ? 'ring-2 ring-primary ring-offset-2' : ''} hover:opacity-80 cursor-pointer`}
+                      title={title}
+                      data-testid={`calendar-day-${day}`}
+                    >
+                      {day}
+                    </div>
+                  );
+                }
+                
+                return days;
+              })()}
+            </div>
+            
+            <div className="flex flex-wrap gap-3 pt-4 border-t text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-green-100 dark:bg-green-900/30"></div>
+                <span>Present</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-yellow-100 dark:bg-yellow-900/30"></div>
+                <span>Late</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-red-100 dark:bg-red-900/30"></div>
+                <span>Absent</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-blue-100 dark:bg-blue-900/30"></div>
+                <span>Report Submitted</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-orange-100 dark:bg-orange-900/30"></div>
+                <span>Overtime</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded ring-2 ring-primary ring-offset-2"></div>
+                <span>Today</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card data-testid="card-recent-logs">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

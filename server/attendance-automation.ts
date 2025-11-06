@@ -379,6 +379,18 @@ export async function processMonthlyRewards() {
           newBadges.push('Reliable Performer');
         }
         
+        const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+        const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
+        const allLogs = await storage.getAttendanceLogsByUserId(member.id);
+        const monthLogs = allLogs.filter(log => log.date >= startDate && log.date <= endDate);
+        const totalOvertimeHours = monthLogs.reduce((sum, log) => sum + (log.overtimeHours || 0), 0);
+        
+        if (totalOvertimeHours >= 20) {
+          await storage.assignBadge(member.id, 'Overtime Warrior');
+          newBadges.push('Overtime Warrior');
+        }
+        
         await storage.updateAttendanceReward(member.id, {
           monthlyScore: 0,
         });
@@ -460,6 +472,13 @@ export async function initializeBadges() {
         icon: '💫',
         criteria: '90+ consecutive days of attendance',
         type: 'streak',
+      },
+      {
+        name: 'Overtime Warrior',
+        description: 'Worked significant overtime hours in a month',
+        icon: '⚡',
+        criteria: '20+ overtime hours in a month',
+        type: 'monthly',
       },
       {
         name: 'Consistent Star',

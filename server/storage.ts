@@ -1364,19 +1364,83 @@ export class DbStorage implements IStorage {
     return await query.orderBy(desc(attendanceLogs.date));
   }
 
-  async getAttendanceLogsByCompany(companyId: number, date?: string): Promise<AttendanceLog[]> {
+  async getAttendanceLogsByCompany(companyId: number, date?: string): Promise<any[]> {
     if (date) {
-      return await db.select().from(attendanceLogs)
+      const logs = await db.select({
+        id: attendanceLogs.id,
+        userId: attendanceLogs.userId,
+        companyId: attendanceLogs.companyId,
+        date: attendanceLogs.date,
+        loginTime: attendanceLogs.loginTime,
+        logoutTime: attendanceLogs.logoutTime,
+        status: attendanceLogs.status,
+        totalHours: attendanceLogs.totalHours,
+        isLate: attendanceLogs.isLate,
+        lateType: attendanceLogs.lateType,
+        isOvertime: attendanceLogs.isOvertime,
+        overtimeHours: attendanceLogs.overtimeHours,
+        pointsEarned: attendanceLogs.pointsEarned,
+        productivityScore: attendanceLogs.productivityScore,
+        reportSubmitted: attendanceLogs.reportSubmitted,
+        earlyLogoutReason: attendanceLogs.earlyLogoutReason,
+        autoLogout: attendanceLogs.autoLogout,
+        notes: attendanceLogs.notes,
+        createdAt: attendanceLogs.createdAt,
+        updatedAt: attendanceLogs.updatedAt,
+        user: {
+          id: users.id,
+          displayName: users.displayName,
+          email: users.email,
+          photoURL: users.photoURL,
+          role: users.role,
+        }
+      })
+        .from(attendanceLogs)
+        .leftJoin(users, eq(attendanceLogs.userId, users.id))
         .where(and(
           eq(attendanceLogs.companyId, companyId),
           eq(attendanceLogs.date, date)
         ))
         .orderBy(attendanceLogs.userId);
+      
+      return logs;
     }
     
-    return await db.select().from(attendanceLogs)
+    const logs = await db.select({
+      id: attendanceLogs.id,
+      userId: attendanceLogs.userId,
+      companyId: attendanceLogs.companyId,
+      date: attendanceLogs.date,
+      loginTime: attendanceLogs.loginTime,
+      logoutTime: attendanceLogs.logoutTime,
+      status: attendanceLogs.status,
+      totalHours: attendanceLogs.totalHours,
+      isLate: attendanceLogs.isLate,
+      lateType: attendanceLogs.lateType,
+      isOvertime: attendanceLogs.isOvertime,
+      overtimeHours: attendanceLogs.overtimeHours,
+      pointsEarned: attendanceLogs.pointsEarned,
+      productivityScore: attendanceLogs.productivityScore,
+      reportSubmitted: attendanceLogs.reportSubmitted,
+      earlyLogoutReason: attendanceLogs.earlyLogoutReason,
+      autoLogout: attendanceLogs.autoLogout,
+      notes: attendanceLogs.notes,
+      createdAt: attendanceLogs.createdAt,
+      updatedAt: attendanceLogs.updatedAt,
+      user: {
+        id: users.id,
+        displayName: users.displayName,
+        email: users.email,
+        photoURL: users.photoURL,
+        role: users.role,
+      }
+    })
+      .from(attendanceLogs)
+      .leftJoin(users, eq(attendanceLogs.userId, users.id))
       .where(eq(attendanceLogs.companyId, companyId))
       .orderBy(desc(attendanceLogs.date));
+    
+    return logs;
   }
 
   async getAttendanceLogsByDateRange(companyId: number, startDate: string, endDate: string): Promise<AttendanceLog[]> {
