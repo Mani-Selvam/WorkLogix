@@ -85,15 +85,25 @@ export default function Attendance() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/attendance/mark', {
+      const response = await fetch('/api/attendance/mark', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': dbUserId?.toString() || '',
+        },
+        credentials: 'include',
         body: JSON.stringify({ companyId }),
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to mark attendance');
+      }
+      return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: AttendanceLog) => {
       toast({
         title: "Login Successful!",
-        description: `Attendance marked as ${data.status.toUpperCase()}. ${data.lateType ? `Late type: ${data.lateType}` : 'You are on time!'}`,
+        description: `Attendance marked as ${data.status?.toUpperCase()}. ${data.lateType ? `Late type: ${data.lateType}` : 'You are on time!'}`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs/today'] });
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/rewards'] });
@@ -111,10 +121,20 @@ export default function Attendance() {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       const today = new Date().toISOString().split('T')[0];
-      return await apiRequest('/api/attendance/logout', {
+      const response = await fetch('/api/attendance/logout', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': dbUserId?.toString() || '',
+        },
+        credentials: 'include',
         body: JSON.stringify({ companyId, date: today }),
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to mark logout');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
