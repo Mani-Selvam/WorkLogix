@@ -1,15 +1,16 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle, Eye, Filter } from "lucide-react";
+import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle, Eye, Filter, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { queryClient } from "@/lib/queryClient";
 
 interface AttendanceStats {
   totalEmployees: number;
@@ -62,6 +63,8 @@ export default function AttendanceOverview() {
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const { data: stats, isLoading: statsLoading } = useQuery<AttendanceStats>({
     queryKey: ['/api/attendance/stats', companyId, today],
@@ -89,6 +92,26 @@ export default function AttendanceOverview() {
     queryKey: ['/api/attendance/top-performers', companyId],
     enabled: !!companyId,
   });
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const intervalId = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/company'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attendance/top-performers'] });
+      setLastRefreshed(new Date());
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [autoRefresh, companyId]);
+
+  const handleManualRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/attendance/stats'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/attendance/company'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/attendance/top-performers'] });
+    setLastRefreshed(new Date());
+  };
 
   const filteredLogs = useMemo(() => {
     if (!todayLogs) return [];
@@ -157,10 +180,37 @@ export default function AttendanceOverview() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Attendance Overview</h1>
           <p className="text-muted-foreground mt-1">
-            Monitor team attendance and performance
+            Monitor team attendance and performance in real-time
           </p>
         </div>
-        <Calendar className="h-12 w-12 text-primary" />
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end text-sm">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={autoRefresh ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                data-testid="button-toggle-auto-refresh"
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
+                {autoRefresh ? "Auto-Refresh On" : "Auto-Refresh Off"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                data-testid="button-manual-refresh"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh Now
+              </Button>
+            </div>
+            <span className="text-xs text-muted-foreground mt-1">
+              Last updated: {format(lastRefreshed, 'hh:mm:ss a')}
+            </span>
+          </div>
+          <Calendar className="h-12 w-12 text-primary" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
