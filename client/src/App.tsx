@@ -24,6 +24,7 @@ import Tasks from "@/pages/user/Tasks";
 import ReportView from "@/pages/user/ReportView";
 import Ratings from "@/pages/user/Ratings";
 import LeaveManagement from "@/pages/user/LeaveManagement";
+import AttendanceIssues from "@/pages/user/AttendanceIssues";
 import Dashboard from "@/pages/admin/Dashboard";
 import AttendanceOverview from "@/pages/admin/AttendanceOverview";
 import LeaveApproval from "@/pages/admin/LeaveApproval";
@@ -34,6 +35,8 @@ import AdminTasks from "@/pages/admin/AdminTasks";
 import AdminMessages from "@/pages/admin/AdminMessages";
 import AdminRatings from "@/pages/admin/AdminRatings";
 import AdminFeedback from "@/pages/admin/AdminFeedback";
+import AttendanceIssueManagement from "@/pages/admin/AttendanceIssueManagement";
+import EmployeeAttendanceDetails from "@/pages/admin/EmployeeAttendanceDetails";
 import CompanyManagement from "@/pages/admin/CompanyManagement";
 import CompanyProfile from "@/pages/admin/CompanyProfile";
 import PaymentHistory from "@/pages/admin/PaymentHistory";
@@ -129,6 +132,9 @@ function Router() {
       <Route path="/user/leaves">
         {() => <ProtectedRoute component={() => <UserLayout><LeaveManagement /></UserLayout>} allowedRole="user" />}
       </Route>
+      <Route path="/user/attendance-issues">
+        {() => <ProtectedRoute component={() => <UserLayout><AttendanceIssues /></UserLayout>} allowedRole="user" />}
+      </Route>
       <Route path="/user">
         <Redirect to="/user/overview" />
       </Route>
@@ -137,6 +143,9 @@ function Router() {
       </Route>
       <Route path="/admin/attendance">
         {() => <ProtectedRoute component={() => <AdminLayout><AttendanceOverview /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/employee/:userId/attendance">
+        {() => <ProtectedRoute component={() => <AdminLayout><EmployeeAttendanceDetails /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin/leaves">
         {() => <ProtectedRoute component={() => <AdminLayout><LeaveApproval /></AdminLayout>} allowedRole="admin" />}
@@ -161,6 +170,9 @@ function Router() {
       </Route>
       <Route path="/admin/feedback">
         {() => <ProtectedRoute component={() => <AdminLayout><AdminFeedback /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/attendance-issues">
+        {() => <ProtectedRoute component={() => <AdminLayout><AttendanceIssueManagement /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin/company-profile">
         {() => <ProtectedRoute component={() => <AdminLayout><CompanyProfile /></AdminLayout>} allowedRole="admin" />}

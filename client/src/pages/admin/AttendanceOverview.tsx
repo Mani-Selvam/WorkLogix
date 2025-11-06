@@ -1,11 +1,13 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Calendar, Users, Clock, TrendingUp, Award, CheckCircle, XCircle, AlertCircle, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
 
 interface AttendanceStats {
   totalEmployees: number;
@@ -43,6 +45,7 @@ interface TopPerformer {
 
 export default function AttendanceOverview() {
   const { companyId } = useAuth();
+  const [, setLocation] = useLocation();
   const today = new Date().toISOString().split('T')[0];
 
   const { data: stats, isLoading: statsLoading } = useQuery<AttendanceStats>({
@@ -327,6 +330,15 @@ export default function AttendanceOverview() {
                         {log.status}
                       </span>
                     </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLocation(`/admin/employee/${log.userId}/attendance`)}
+                      data-testid={`button-view-details-${index}`}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Details
+                    </Button>
                   </div>
                 </div>
               ))

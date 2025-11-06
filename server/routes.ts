@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, companyBasicRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema } from "@shared/schema";
+import { insertCompanySchema, insertUserSchema, insertTaskSchema, insertReportSchema, insertMessageSchema, insertRatingSchema, insertFileUploadSchema, insertGroupMessageSchema, insertFeedbackSchema, loginSchema, signupSchema, firebaseSigninSchema, companyRegistrationSchema, companyBasicRegistrationSchema, superAdminLoginSchema, companyAdminLoginSchema, companyUserLoginSchema, insertSlotPricingSchema, insertCompanyPaymentSchema, updatePaymentStatusSchema, slotPurchaseSchema, passwordResetRequestSchema, passwordResetSchema, insertAttendanceIssueSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { sendReportNotification, sendCompanyServerIdEmail, sendUserIdEmail, sendPasswordResetEmail, sendPaymentConfirmationEmail, sendCompanyVerificationEmail } from "./email";
@@ -2803,6 +2803,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteHoliday(holidayId);
       res.json({ message: "Holiday deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Employee Attendance Profile (Admin View)
+  app.get("/api/admin/employee/:userId/attendance-profile", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const userId = parseInt(req.params.userId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can view employee profiles" });
+      }
+      
+      const employee = await storage.getUserById(userId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== employee.companyId) {
+        return res.status(403).json({ message: "You can only view employees from your own company" });
+      }
+      
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const firstDay = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+      const lastDay = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+      
+      const [attendanceLogs, rewards, monthlyReport, leaves] = await Promise.all([
+        storage.getAttendanceLogsByUser(userId, firstDay, lastDay),
+        storage.getAttendanceRewardByUser(userId),
+        storage.getMonthlyAttendanceReport(userId, currentMonth, currentYear),
+        storage.getLeavesByUserId(userId),
+      ]);
+      
+      res.json({
+        employee: {
+          id: employee.id,
+          uniqueUserId: employee.uniqueUserId,
+          displayName: employee.displayName,
+          email: employee.email,
+          photoURL: employee.photoURL,
+          role: employee.role,
+          createdAt: employee.createdAt,
+        },
+        attendanceLogs,
+        rewards,
+        monthlyReport,
+        leaves,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Attendance Issue Correction Requests
+  app.post("/api/attendance-issues", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || !requestingUser.companyId) {
+        return res.status(404).json({ message: "User or company not found" });
+      }
+      
+      const validationSchema = insertAttendanceIssueSchema.omit({ 
+        userId: true, 
+        companyId: true, 
+        status: true,
+        approvedBy: true,
+        adminRemarks: true,
+      });
+      
+      const validatedData = validationSchema.parse(req.body);
+      
+      const issueData = {
+        ...validatedData,
+        userId: requestingUserId,
+        companyId: requestingUser.companyId,
+        status: "pending",
+      };
+      
+      const issue = await storage.createAttendanceIssue(issueData);
+      res.json(issue);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance-issues", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const issues = await storage.getAttendanceIssuesByUserId(requestingUserId);
+      res.json(issues);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/attendance-issues/pending", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can view pending issues" });
+      }
+      
+      if (!requestingUser.companyId) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      const issues = await storage.getPendingAttendanceIssues(requestingUser.companyId);
+      res.json(issues);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/attendance-issues/:id", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const issueId = parseInt(req.params.id);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can update issues" });
+      }
+      
+      const { status, adminRemarks, applyCorrection } = req.body;
+      
+      await storage.updateAttendanceIssueStatus(issueId, status, requestingUserId, adminRemarks);
+      
+      if (status === 'approved' && applyCorrection) {
+        const issue = await storage.getAttendanceIssueById(issueId);
+        if (issue && issue.date) {
+          const log = await storage.getAttendanceLogByUserAndDate(issue.userId, issue.date);
+          if (log) {
+            const updates: any = {};
+            if (issue.requestedLoginTime) updates.loginTime = issue.requestedLoginTime;
+            if (issue.requestedLogoutTime) updates.logoutTime = issue.requestedLogoutTime;
+            
+            if (updates.loginTime || updates.logoutTime) {
+              const loginTime = updates.loginTime || log.loginTime;
+              const logoutTime = updates.logoutTime || log.logoutTime;
+              
+              if (loginTime && logoutTime) {
+                const totalMinutes = Math.floor((new Date(logoutTime).getTime() - new Date(loginTime).getTime()) / (1000 * 60));
+                updates.totalHours = Math.floor(totalMinutes / 60);
+              }
+              
+              await storage.updateAttendanceLog(log.id, updates);
+            }
+          }
+        }
+      }
+      
+      res.json({ message: "Issue updated successfully" });
     } catch (error) {
       next(error);
     }

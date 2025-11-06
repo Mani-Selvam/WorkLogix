@@ -1697,6 +1697,30 @@ export class DbStorage implements IStorage {
       .limit(1);
     return result[0] || null;
   }
+
+  async getAttendanceIssueById(id: number): Promise<AttendanceIssue | null> {
+    const result = await db.select().from(attendanceIssues)
+      .where(eq(attendanceIssues.id, id))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getAttendanceLogByUserAndDate(userId: number, date: string): Promise<AttendanceLog | null> {
+    const result = await db.select().from(attendanceLogs)
+      .where(and(
+        eq(attendanceLogs.userId, userId),
+        eq(attendanceLogs.date, date)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getHolidayById(id: number): Promise<Holiday | null> {
+    const result = await db.select().from(holidays)
+      .where(eq(holidays.id, id))
+      .limit(1);
+    return result[0] || null;
+  }
 }
 
 export const storage = new DbStorage();
