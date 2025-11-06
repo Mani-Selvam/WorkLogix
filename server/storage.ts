@@ -1552,10 +1552,27 @@ export class DbStorage implements IStorage {
       .orderBy(desc(leaves.createdAt));
   }
 
-  async getLeavesByCompanyId(companyId: number): Promise<Leave[]> {
-    return await db.select().from(leaves)
+  async getLeavesByCompanyId(companyId: number): Promise<any[]> {
+    const results = await db.select({
+      id: leaves.id,
+      userId: leaves.userId,
+      companyId: leaves.companyId,
+      leaveType: leaves.leaveType,
+      startDate: leaves.startDate,
+      endDate: leaves.endDate,
+      reason: leaves.reason,
+      status: leaves.status,
+      approvedBy: leaves.approvedBy,
+      remarks: leaves.remarks,
+      appliedDate: leaves.appliedDate,
+      createdAt: leaves.createdAt,
+      userName: users.displayName,
+    }).from(leaves)
+      .leftJoin(users, eq(leaves.userId, users.id))
       .where(eq(leaves.companyId, companyId))
       .orderBy(desc(leaves.createdAt));
+    
+    return results;
   }
 
   async getPendingLeaves(companyId: number): Promise<Leave[]> {

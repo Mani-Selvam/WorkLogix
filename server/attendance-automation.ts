@@ -74,8 +74,27 @@ export async function processDailyAttendance() {
       const todayLogs = await storage.getAttendanceLogsByCompany(company.id, today);
       const attendedUserIds = new Set(todayLogs.map(log => log.userId));
       
+      const holidays = await storage.getHolidaysByCompanyId(company.id);
+      const isHoliday = holidays.some(h => h.date === today);
+      
       for (const member of activeMembers) {
         if (!attendedUserIds.has(member.id)) {
+          if (isHoliday) {
+            continue;
+          }
+          
+          const userLeaves = await storage.getLeavesByUserId(member.id);
+          const hasApprovedLeave = userLeaves.some(leave => 
+            leave.companyId === company.id &&
+            leave.status === 'approved' &&
+            leave.startDate <= today &&
+            leave.endDate >= today
+          );
+          
+          if (hasApprovedLeave) {
+            continue;
+          }
+          
           await storage.markAbsent(member.id, company.id, today);
         }
       }

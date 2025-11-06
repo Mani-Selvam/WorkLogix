@@ -23,8 +23,11 @@ import Announcements from "@/pages/user/Announcements";
 import Tasks from "@/pages/user/Tasks";
 import ReportView from "@/pages/user/ReportView";
 import Ratings from "@/pages/user/Ratings";
+import LeaveManagement from "@/pages/user/LeaveManagement";
 import Dashboard from "@/pages/admin/Dashboard";
 import AttendanceOverview from "@/pages/admin/AttendanceOverview";
+import LeaveApproval from "@/pages/admin/LeaveApproval";
+import HolidayManagement from "@/pages/admin/HolidayManagement";
 import Users from "@/pages/admin/Users";
 import AdminReports from "@/pages/admin/AdminReports";
 import AdminTasks from "@/pages/admin/AdminTasks";
@@ -123,6 +126,9 @@ function Router() {
       <Route path="/user/ratings">
         {() => <ProtectedRoute component={() => <UserLayout><Ratings /></UserLayout>} allowedRole="user" />}
       </Route>
+      <Route path="/user/leaves">
+        {() => <ProtectedRoute component={() => <UserLayout><LeaveManagement /></UserLayout>} allowedRole="user" />}
+      </Route>
       <Route path="/user">
         <Redirect to="/user/overview" />
       </Route>
@@ -131,6 +137,12 @@ function Router() {
       </Route>
       <Route path="/admin/attendance">
         {() => <ProtectedRoute component={() => <AdminLayout><AttendanceOverview /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/leaves">
+        {() => <ProtectedRoute component={() => <AdminLayout><LeaveApproval /></AdminLayout>} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/holidays">
+        {() => <ProtectedRoute component={() => <AdminLayout><HolidayManagement /></AdminLayout>} allowedRole="admin" />}
       </Route>
       <Route path="/admin/users">
         {() => <ProtectedRoute component={() => <AdminLayout><Users /></AdminLayout>} allowedRole="admin" />}

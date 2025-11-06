@@ -2631,6 +2631,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/leaves", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const user = await storage.getUserById(userId);
+      
+      if (!user || !user.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+      
+      const leave = await storage.createLeave({
+        userId,
+        companyId: user.companyId,
+        startDate: req.body.startDate,
+        endDate: req.body.endDate,
+        leaveType: req.body.leaveType,
+        reason: req.body.reason,
+        status: 'pending',
+      });
+      
+      res.json(leave);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/leaves/me", requireAuth, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.headers["x-user-id"] as string);
+      const leaves = await storage.getLeavesByUserId(userId);
+      res.json(leaves);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/leaves/company/:companyId", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const companyId = parseInt(req.params.companyId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can view company leave requests" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== companyId) {
+        return res.status(403).json({ message: "You can only view leave requests for your own company" });
+      }
+      
+      const leaves = await storage.getLeavesByCompanyId(companyId);
+      res.json(leaves);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/leaves/:leaveId/approve", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const leaveId = parseInt(req.params.leaveId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can approve leave requests" });
+      }
+      
+      const leave = await storage.getLeaveById(leaveId);
+      if (!leave) {
+        return res.status(404).json({ message: "Leave request not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== leave.companyId) {
+        return res.status(403).json({ message: "You can only approve leave requests for your own company" });
+      }
+      
+      await storage.updateLeaveStatus(leaveId, 'approved', req.body.approvedBy || requestingUserId);
+      res.json({ message: "Leave approved successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/leaves/:leaveId/reject", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const leaveId = parseInt(req.params.leaveId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can reject leave requests" });
+      }
+      
+      const leave = await storage.getLeaveById(leaveId);
+      if (!leave) {
+        return res.status(404).json({ message: "Leave request not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== leave.companyId) {
+        return res.status(403).json({ message: "You can only reject leave requests for your own company" });
+      }
+      
+      await storage.updateLeaveStatus(leaveId, 'rejected', req.body.rejectedBy || requestingUserId);
+      res.json({ message: "Leave rejected successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/holidays", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can create holidays" });
+      }
+      
+      if (!requestingUser.companyId) {
+        return res.status(400).json({ message: "User not associated with a company" });
+      }
+      
+      const holiday = await storage.createHoliday({
+        companyId: requestingUser.companyId,
+        name: req.body.name,
+        date: req.body.date,
+        description: req.body.description,
+      });
+      
+      res.json(holiday);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/holidays/company/:companyId", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const companyId = parseInt(req.params.companyId);
+      
+      if (requestingUser && requestingUser.role === 'company_admin' && requestingUser.companyId !== companyId) {
+        return res.status(403).json({ message: "You can only view holidays for your own company" });
+      }
+      
+      const holidays = await storage.getHolidaysByCompanyId(companyId);
+      res.json(holidays);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/holidays/:holidayId", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const requestingUser = await storage.getUserById(requestingUserId);
+      const holidayId = parseInt(req.params.holidayId);
+      
+      if (!requestingUser || (requestingUser.role !== 'company_admin' && requestingUser.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Only admins can delete holidays" });
+      }
+      
+      const holiday = await storage.getHolidayById(holidayId);
+      if (!holiday) {
+        return res.status(404).json({ message: "Holiday not found" });
+      }
+      
+      if (requestingUser.role === 'company_admin' && requestingUser.companyId !== holiday.companyId) {
+        return res.status(403).json({ message: "You can only delete holidays for your own company" });
+      }
+      
+      await storage.deleteHoliday(holidayId);
+      res.json({ message: "Holiday deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/badges", requireAuth, async (req, res, next) => {
     try {
       const badges = await storage.getAllBadges();
