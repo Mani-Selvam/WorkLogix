@@ -100,20 +100,12 @@ export default function Attendance() {
     const minutes = now.getMinutes();
     const totalMinutes = hours * 60 + minutes;
     
-    if (totalMinutes >= 540 && totalMinutes < 550) {
-      return { message: 'Perfect timing! Login now for 10 points', color: 'text-green-600', points: 10 };
-    } else if (totalMinutes >= 550 && totalMinutes < 570) {
-      return { message: 'Login now for 9 points', color: 'text-green-500', points: 9 };
-    } else if (totalMinutes >= 570 && totalMinutes < 600) {
-      return { message: 'Login now for 8 points', color: 'text-yellow-600', points: 8 };
-    } else if (totalMinutes >= 600 && totalMinutes < 630) {
-      return { message: 'Login now for 7 points', color: 'text-orange-600', points: 7 };
-    } else if (totalMinutes >= 780 && totalMinutes < 840) {
-      return { message: 'Afternoon session - Login now for 6 points', color: 'text-blue-600', points: 6 };
-    } else if (totalMinutes >= 840 && totalMinutes < 900) {
-      return { message: 'Afternoon session - Login now for 10 points', color: 'text-blue-600', points: 10 };
+    if (totalMinutes >= 540 && totalMinutes < 630) {
+      return { message: 'Current Status: Morning session - Login now for 10 points', color: 'text-blue-600', points: 10 };
+    } else if (totalMinutes >= 780 && totalMinutes < 900) {
+      return { message: 'Current Status: Afternoon session - Login now for 10 points', color: 'text-blue-600', points: 10 };
     } else {
-      return { message: 'Login is not available at this time. Please login between 9:00-10:30 AM or 1:00-3:00 PM', color: 'text-red-600', points: 0 };
+      return { message: 'Please Login First', color: 'text-gray-600', points: 0 };
     }
   };
 
@@ -126,7 +118,10 @@ export default function Attendance() {
           'x-user-id': dbUserId?.toString() || '',
         },
         credentials: 'include',
-        body: JSON.stringify({ companyId }),
+        body: JSON.stringify({ 
+          companyId,
+          loginTime: new Date().toISOString()
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
