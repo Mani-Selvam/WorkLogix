@@ -253,6 +253,16 @@ export default function Attendance() {
     queryKey: ['/api/badges'],
   });
 
+  const { data: badgeInfo } = useQuery<{
+    monthlyBadge: { badge: string; grade: string; color: string; icon: string };
+    yearlyBadge: { badge: string; grade: string; color: string; icon: string };
+    monthlyScore: number;
+    yearlyScore: number;
+  }>({
+    queryKey: ['/api/attendance/badges', dbUserId],
+    enabled: !!dbUserId,
+  });
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'present':
@@ -597,6 +607,78 @@ export default function Attendance() {
           </CardContent>
         </Card>
       </div>
+
+      {badgeInfo && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gradient-to-br from-yellow-50 via-white to-yellow-50 dark:from-yellow-950/20 dark:via-background dark:to-yellow-950/20 border-2" data-testid="card-monthly-badge">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Monthly Performance
+              </CardTitle>
+              <CardDescription>
+                Current month badge based on points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-4xl">{badgeInfo.monthlyBadge.icon}</span>
+                    <div>
+                      <p className={`text-2xl font-bold ${badgeInfo.monthlyBadge.color}`} data-testid="text-monthly-badge">
+                        {badgeInfo.monthlyBadge.badge}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Grade: <span className="font-bold text-foreground" data-testid="text-monthly-grade">{badgeInfo.monthlyBadge.grade}</span></p>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-primary" data-testid="text-monthly-score">{badgeInfo.monthlyScore}</p>
+                  <p className="text-xs text-muted-foreground">points this month</p>
+                </div>
+              </div>
+              <div className="pt-3 border-t text-sm text-muted-foreground">
+                <p><strong className="text-yellow-600">Gold (A):</strong> 200+ pts | <strong className="text-gray-400">Silver (B):</strong> 150-199 | <strong className="text-orange-600">Bronze (C):</strong> 100-149</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-cyan-50 via-white to-purple-50 dark:from-cyan-950/20 dark:via-background dark:to-purple-950/20 border-2" data-testid="card-yearly-badge">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Yearly Performance
+              </CardTitle>
+              <CardDescription>
+                Current year badge based on points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-4xl">{badgeInfo.yearlyBadge.icon}</span>
+                    <div>
+                      <p className={`text-2xl font-bold ${badgeInfo.yearlyBadge.color}`} data-testid="text-yearly-badge">
+                        {badgeInfo.yearlyBadge.badge}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Grade: <span className="font-bold text-foreground" data-testid="text-yearly-grade">{badgeInfo.yearlyBadge.grade}</span></p>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-primary" data-testid="text-yearly-score">{badgeInfo.yearlyScore}</p>
+                  <p className="text-xs text-muted-foreground">points this year</p>
+                </div>
+              </div>
+              <div className="pt-3 border-t text-sm text-muted-foreground">
+                <p><strong className="text-cyan-400">Diamond (A+):</strong> 2400+ | <strong className="text-yellow-600">Gold (A):</strong> 2000-2399 | <strong className="text-gray-400">Silver (B):</strong> 1500-1999</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {monthlyReport && (
         <Card data-testid="card-monthly-summary">

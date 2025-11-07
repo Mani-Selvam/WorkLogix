@@ -2643,6 +2643,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/attendance/badges/:userId", requireAuth, async (req, res, next) => {
+    try {
+      const requestingUserId = parseInt(req.headers["x-user-id"] as string);
+      const userId = parseInt(req.params.userId);
+      
+      if (requestingUserId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const reward = await storage.getAttendanceRewardByUser(userId);
+      const { calculateMonthlyBadge, calculateYearlyBadge } = await import('./utils/badges');
+      
+      const monthlyScore = reward?.monthlyScore || 0;
+      const yearlyScore = reward?.yearlyScore || 0;
+      
+      const monthlyBadge = calculateMonthlyBadge(monthlyScore);
+      const yearlyBadge = calculateYearlyBadge(yearlyScore);
+      
+      res.json({
+        monthlyBadge,
+        yearlyBadge,
+        monthlyScore,
+        yearlyScore,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/attendance/monthly-report", requireAuth, async (req, res, next) => {
     try {
       const userId = parseInt(req.headers["x-user-id"] as string);

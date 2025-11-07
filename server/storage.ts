@@ -1283,6 +1283,7 @@ export class DbStorage implements IStorage {
     await this.updateAttendanceReward(userId, {
       totalPoints: reward.totalPoints + pointsEarned,
       monthlyScore: reward.monthlyScore + pointsEarned,
+      yearlyScore: reward.yearlyScore + pointsEarned,
       lastAttendanceDate: date,
     });
     

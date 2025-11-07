@@ -65,8 +65,10 @@ async function updateDailyProductivity(userId: number, companyId: number, date: 
     const reward = await storage.getAttendanceRewardByUser(userId);
     if (reward && scoreDelta !== 0) {
       const currentMonthlyScore = reward.monthlyScore || 0;
+      const currentYearlyScore = reward.yearlyScore || 0;
       await storage.updateAttendanceReward(userId, {
         monthlyScore: currentMonthlyScore + scoreDelta,
+        yearlyScore: currentYearlyScore + scoreDelta,
       });
     }
     
@@ -382,9 +384,9 @@ export async function processMonthlyRewards() {
         const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         const lastDay = new Date(currentYear, currentMonth, 0).getDate();
         const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
-        const allLogs = await storage.getAttendanceLogsByUserId(member.id);
-        const monthLogs = allLogs.filter(log => log.date >= startDate && log.date <= endDate);
-        const totalOvertimeHours = monthLogs.reduce((sum, log) => sum + (log.overtimeHours || 0), 0);
+        const allLogs = await storage.getAttendanceLogsByUser(member.id);
+        const monthLogs = allLogs.filter((log: any) => log.date >= startDate && log.date <= endDate);
+        const totalOvertimeHours = monthLogs.reduce((sum: number, log: any) => sum + (log.overtimeHours || 0), 0);
         
         if (totalOvertimeHours >= 20) {
           await storage.assignBadge(member.id, 'Overtime Warrior');
@@ -394,6 +396,13 @@ export async function processMonthlyRewards() {
         await storage.updateAttendanceReward(member.id, {
           monthlyScore: 0,
         });
+        
+        const isEndOfYear = currentMonth === 12;
+        if (isEndOfYear) {
+          await storage.updateAttendanceReward(member.id, {
+            yearlyScore: 0,
+          });
+        }
         
         const reward = await storage.getAttendanceRewardByUser(member.id);
         if (reward && member.email) {

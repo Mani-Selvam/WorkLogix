@@ -248,6 +248,7 @@ export const attendanceRewards = pgTable("attendance_rewards", {
   lastAttendanceDate: varchar("last_attendance_date", { length: 10 }),
   badgesEarned: text("badges_earned").array(),
   monthlyScore: integer("monthly_score").notNull().default(0),
+  yearlyScore: integer("yearly_score").notNull().default(0),
   perfectMonths: integer("perfect_months").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
