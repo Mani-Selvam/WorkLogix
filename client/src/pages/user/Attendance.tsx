@@ -111,6 +111,10 @@ export default function Attendance() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
+      const now = new Date();
+      const localHours = now.getHours();
+      const localMinutes = now.getMinutes();
+      
       const response = await fetch('/api/attendance/mark', {
         method: 'POST',
         headers: {
@@ -120,7 +124,9 @@ export default function Attendance() {
         credentials: 'include',
         body: JSON.stringify({ 
           companyId,
-          loginTime: new Date().toISOString()
+          loginTime: now.toISOString(),
+          localHours,
+          localMinutes
         }),
       });
       if (!response.ok) {
@@ -302,38 +308,35 @@ export default function Attendance() {
         <Award className="h-12 w-12 text-primary" />
       </div>
 
-      <Card className="border-2 border-primary bg-gradient-to-r from-primary/10 via-background to-primary/10" data-testid="card-attendance-controls">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+      <Card className="border border-gray-200 dark:border-gray-700" data-testid="card-attendance-controls">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-lg">
             <span className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               Attendance Controls
             </span>
-            <span className="text-lg font-mono" data-testid="text-current-time">
+            <span className="text-xl font-bold text-primary" data-testid="text-current-time">
               {format(currentTime, 'hh:mm:ss a')}
             </span>
           </CardTitle>
-          <CardDescription>
-            Mark your login and logout for today - Server Time: {format(currentTime, 'PPP')}
+          <CardDescription className="text-sm">
+            Mark your login and logout for today - Server Time: {format(currentTime, 'MMMM dd, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!hasLoggedIn && (
-            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20" data-testid="alert-login-reminder">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className={`${timeStatus.color} font-medium`}>
-                Current Status: {timeStatus.message}
-              </AlertDescription>
-            </Alert>
-          )}
+          <Alert className="border-blue-100 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900" data-testid="alert-login-reminder">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className={`${timeStatus.color} font-medium text-sm`}>
+              {timeStatus.message}
+            </AlertDescription>
+          </Alert>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button
               size="lg"
-              className="flex-1 h-16 text-lg font-semibold"
+              className="h-14 text-base font-semibold bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
               onClick={() => loginMutation.mutate()}
               disabled={!canLogin || loginMutation.isPending}
-              variant={canLogin ? "default" : "outline"}
               data-testid="button-login-attendance"
             >
               {loginMutation.isPending ? (
@@ -345,24 +348,34 @@ export default function Attendance() {
               )}
             </Button>
 
-            <Button
-              size="lg"
-              className="flex-1 h-16 text-lg font-semibold"
-              onClick={() => logoutMutation.mutate()}
-              disabled={!canLogout || logoutMutation.isPending}
-              variant={canLogout ? "destructive" : "outline"}
-              data-testid="button-logout-attendance"
-            >
-              {logoutMutation.isPending ? (
-                <><Clock className="mr-2 h-5 w-5 animate-spin" /> Marking Logout...</>
+            <div className="flex items-center justify-center">
+              {!hasLoggedIn ? (
+                <span className="text-gray-500 dark:text-gray-400 text-sm font-medium flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Please Login First
+                </span>
               ) : hasLoggedOut ? (
-                <><CheckCircle className="mr-2 h-5 w-5" /> Already Logged Out</>
-              ) : !hasLoggedIn ? (
-                <><AlertCircle className="mr-2 h-5 w-5" /> Please Login First</>
+                <span className="text-green-600 dark:text-green-400 text-sm font-medium flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Day Complete
+                </span>
               ) : (
-                <><LogOut className="mr-2 h-5 w-5" /> LOGOUT NOW</>
+                <Button
+                  size="lg"
+                  className="w-full h-14 text-base font-semibold"
+                  onClick={() => logoutMutation.mutate()}
+                  disabled={!canLogout || logoutMutation.isPending}
+                  variant="outline"
+                  data-testid="button-logout-attendance"
+                >
+                  {logoutMutation.isPending ? (
+                    <><Clock className="mr-2 h-5 w-5 animate-spin" /> Marking Logout...</>
+                  ) : (
+                    <><LogOut className="mr-2 h-5 w-5" /> LOGOUT NOW</>
+                  )}
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
 
           {showPointsAnimation && (

@@ -2469,13 +2469,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/attendance/mark", requireAuth, async (req, res, next) => {
     try {
       const userId = parseInt(req.headers["x-user-id"] as string);
-      const { companyId, loginTime } = req.body;
+      const { companyId, loginTime, localHours, localMinutes } = req.body;
       
       if (!companyId) {
         return res.status(400).json({ message: "Company ID is required" });
       }
       
-      const log = await storage.markAttendance(userId, companyId, loginTime ? new Date(loginTime) : new Date());
+      const log = await storage.markAttendance(
+        userId, 
+        companyId, 
+        loginTime ? new Date(loginTime) : new Date(),
+        localHours,
+        localMinutes
+      );
       res.json(log);
     } catch (error) {
       next(error);

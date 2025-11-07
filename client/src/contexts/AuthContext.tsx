@@ -92,6 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (userData.role === 'company_member' && userData.companyId) {
         try {
+          const now = new Date();
+          const localHours = now.getHours();
+          const localMinutes = now.getMinutes();
+          
           await fetch('/api/attendance/mark', {
             method: 'POST',
             headers: { 
@@ -101,7 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             credentials: 'include',
             body: JSON.stringify({ 
               companyId: userData.companyId,
-              loginTime: new Date().toISOString()
+              loginTime: now.toISOString(),
+              localHours,
+              localMinutes
             }),
           });
         } catch (attendanceError) {

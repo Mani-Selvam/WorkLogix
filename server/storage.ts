@@ -1210,7 +1210,7 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
 
-  async markAttendance(userId: number, companyId: number, loginTime: Date): Promise<AttendanceLog> {
+  async markAttendance(userId: number, companyId: number, loginTime: Date, localHours?: number, localMinutes?: number): Promise<AttendanceLog> {
     const date = new Date(loginTime).toISOString().split('T')[0];
     
     const existingLog = await this.getAttendanceLog(userId, companyId, date);
@@ -1223,8 +1223,17 @@ export class DbStorage implements IStorage {
       throw new Error('Company not found');
     }
 
-    const loginTimeStr = loginTime.toTimeString().substring(0, 5);
-    const [hours, minutes] = loginTimeStr.split(':').map(Number);
+    let hours: number;
+    let minutes: number;
+    
+    if (localHours !== undefined && localMinutes !== undefined) {
+      hours = localHours;
+      minutes = localMinutes;
+    } else {
+      const loginTimeStr = loginTime.toTimeString().substring(0, 5);
+      [hours, minutes] = loginTimeStr.split(':').map(Number);
+    }
+    
     const totalMinutes = hours * 60 + minutes;
     
     let status = 'present';
