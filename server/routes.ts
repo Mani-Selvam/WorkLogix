@@ -565,7 +565,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      
+      let companyProfileComplete = true;
+      if (user.role === 'company_admin' && user.companyId) {
+        const company = await storage.getCompanyById(user.companyId);
+        if (company) {
+          companyProfileComplete = !!(
+            company.companyType &&
+            company.designation &&
+            company.address &&
+            company.pincode &&
+            company.city &&
+            company.state &&
+            company.country &&
+            company.employees &&
+            company.annualTurnover &&
+            company.yearEstablished
+          );
+        }
+      }
+      
+      res.json({ ...userWithoutPassword, companyProfileComplete });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -605,7 +625,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      
+      let companyProfileComplete = true;
+      if (user.role === 'company_admin' && user.companyId) {
+        const company = await storage.getCompanyById(user.companyId);
+        if (company) {
+          companyProfileComplete = !!(
+            company.companyType &&
+            company.designation &&
+            company.address &&
+            company.pincode &&
+            company.city &&
+            company.state &&
+            company.country &&
+            company.employees &&
+            company.annualTurnover &&
+            company.yearEstablished
+          );
+        }
+      }
+      
+      res.json({ ...userWithoutPassword, companyProfileComplete });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });

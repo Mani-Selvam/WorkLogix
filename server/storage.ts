@@ -226,10 +226,10 @@ export interface IStorage {
   // Attendance analytics
   getAttendanceStats(companyId: number, date: string): Promise<{
     totalEmployees: number;
-    present: number;
-    absent: number;
-    late: number;
-    onTime: number;
+    presentToday: number;
+    absentToday: number;
+    lateToday: number;
+    onTimePercentage: number;
   }>;
   
   getMonthlyAttendanceReport(userId: number, month: number, year: number): Promise<{
@@ -1223,37 +1223,47 @@ export class DbStorage implements IStorage {
       throw new Error('Company not found');
     }
 
-    const workStartTime = company.workStartTime || '09:00';
-    const lateEntryTime = company.lateEntryTime || '09:15';
-    const attendanceWindowEnd = company.attendanceWindowEnd || '10:00';
-    
     const loginTimeStr = loginTime.toTimeString().substring(0, 5);
+    const [hours, minutes] = loginTimeStr.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
     
     let status = 'present';
     let lateType: string | null = null;
     let isLate = false;
-    let pointsEarned = 10;
+    let pointsEarned = 0;
     
-    if (loginTimeStr <= workStartTime) {
+    if (totalMinutes >= 540 && totalMinutes < 550) {
       status = 'on-time';
-      lateType = null;
+      lateType = 'morning-ontime';
       isLate = false;
       pointsEarned = 10;
-    } else if (loginTimeStr > workStartTime && loginTimeStr <= lateEntryTime) {
+    } else if (totalMinutes >= 550 && totalMinutes < 570) {
       status = 'slightly-late';
-      lateType = 'slightly-late';
+      lateType = 'morning-late';
+      isLate = true;
+      pointsEarned = 9;
+    } else if (totalMinutes >= 570 && totalMinutes < 600) {
+      status = 'late';
+      lateType = 'morning-very-late';
       isLate = true;
       pointsEarned = 8;
-    } else if (loginTimeStr > lateEntryTime && loginTimeStr <= attendanceWindowEnd) {
-      status = 'late';
-      lateType = 'late';
-      isLate = true;
-      pointsEarned = 5;
-    } else {
+    } else if (totalMinutes >= 600 && totalMinutes < 630) {
       status = 'very-late';
-      lateType = 'very-late';
+      lateType = 'morning-poor';
       isLate = true;
-      pointsEarned = 2;
+      pointsEarned = 7;
+    } else if (totalMinutes >= 780 && totalMinutes < 840) {
+      status = 'present';
+      lateType = 'afternoon-session';
+      isLate = false;
+      pointsEarned = 6;
+    } else if (totalMinutes >= 840 && totalMinutes < 900) {
+      status = 'present';
+      lateType = 'afternoon-late';
+      isLate = false;
+      pointsEarned = 10;
+    } else {
+      throw new Error('Login is not allowed at this time. Please login during allowed hours: 9:00-10:30 AM or 1:00-3:00 PM');
     }
     
     const result = await db.insert(attendanceLogs).values({
@@ -1528,10 +1538,10 @@ export class DbStorage implements IStorage {
 
   async getAttendanceStats(companyId: number, date: string): Promise<{
     totalEmployees: number;
-    present: number;
-    absent: number;
-    late: number;
-    onTime: number;
+    presentToday: number;
+    absentToday: number;
+    lateToday: number;
+    onTimePercentage: number;
   }> {
     const [totalResult] = await db.select({ count: sql<number>`count(*)` })
       .from(users)
@@ -1543,17 +1553,19 @@ export class DbStorage implements IStorage {
     
     const logs = await this.getAttendanceLogsByCompany(companyId, date);
     
-    const present = logs.filter(l => l.status === 'present' || l.status === 'on-time').length;
-    const late = logs.filter(l => l.status === 'late').length;
+    const totalEmployees = Number(totalResult.count);
+    const presentToday = logs.filter(l => l.status !== 'absent').length;
+    const lateToday = logs.filter(l => l.status === 'late' || l.status === 'slightly-late' || l.status === 'very-late').length;
     const onTime = logs.filter(l => l.status === 'on-time').length;
-    const absent = Number(totalResult.count) - logs.length;
+    const absentToday = totalEmployees - presentToday;
+    const onTimePercentage = totalEmployees > 0 ? Math.round((onTime / totalEmployees) * 100) : 0;
     
     return {
-      totalEmployees: Number(totalResult.count),
-      present,
-      absent,
-      late,
-      onTime,
+      totalEmployees,
+      presentToday,
+      absentToday,
+      lateToday,
+      onTimePercentage,
     };
   }
 

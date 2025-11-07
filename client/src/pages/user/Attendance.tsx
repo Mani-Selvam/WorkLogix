@@ -62,6 +62,8 @@ export default function Attendance() {
   const [tasksCompleted, setTasksCompleted] = useState("");
   const [notes, setNotes] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState(0);
 
   const { data: todayLog, refetch: refetchTodayLog } = useQuery<AttendanceLog | null>({
     queryKey: ['/api/attendance/logs/today', dbUserId],
@@ -83,6 +85,38 @@ export default function Attendance() {
     return () => clearInterval(intervalId);
   }, [todayLog, refetchTodayLog]);
 
+  const isLoginAllowed = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const totalMinutes = hours * 60 + minutes;
+    
+    return (totalMinutes >= 540 && totalMinutes < 630) || (totalMinutes >= 780 && totalMinutes < 900);
+  };
+
+  const getLoginTimeMessage = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const totalMinutes = hours * 60 + minutes;
+    
+    if (totalMinutes >= 540 && totalMinutes < 550) {
+      return { message: 'Perfect timing! Login now for 10 points', color: 'text-green-600', points: 10 };
+    } else if (totalMinutes >= 550 && totalMinutes < 570) {
+      return { message: 'Login now for 9 points', color: 'text-green-500', points: 9 };
+    } else if (totalMinutes >= 570 && totalMinutes < 600) {
+      return { message: 'Login now for 8 points', color: 'text-yellow-600', points: 8 };
+    } else if (totalMinutes >= 600 && totalMinutes < 630) {
+      return { message: 'Login now for 7 points', color: 'text-orange-600', points: 7 };
+    } else if (totalMinutes >= 780 && totalMinutes < 840) {
+      return { message: 'Afternoon session - Login now for 6 points', color: 'text-blue-600', points: 6 };
+    } else if (totalMinutes >= 840 && totalMinutes < 900) {
+      return { message: 'Afternoon session - Login now for 10 points', color: 'text-blue-600', points: 10 };
+    } else {
+      return { message: 'Login is not available at this time. Please login between 9:00-10:30 AM or 1:00-3:00 PM', color: 'text-red-600', points: 0 };
+    }
+  };
+
   const loginMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/attendance/mark', {
@@ -101,9 +135,13 @@ export default function Attendance() {
       return response.json();
     },
     onSuccess: (data: AttendanceLog) => {
+      setPointsEarned(data.pointsEarned || 0);
+      setShowPointsAnimation(true);
+      setTimeout(() => setShowPointsAnimation(false), 3000);
+      
       toast({
-        title: "Login Successful!",
-        description: `Attendance marked as ${data.status?.toUpperCase()}. ${data.lateType ? `Late type: ${data.lateType}` : 'You are on time!'}`,
+        title: `🎉 Login Successful! +${data.pointsEarned} Points`,
+        description: `You earned ${data.pointsEarned} points! ${data.lateType || ''}`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/logs/today'] });
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/rewards'] });
@@ -243,22 +281,11 @@ export default function Attendance() {
 
   const hasLoggedIn = !!todayLog && !!todayLog.loginTime;
   const hasLoggedOut = !!todayLog && !!todayLog.logoutTime;
-  const canLogin = !hasLoggedIn;
+  const loginAllowed = isLoginAllowed();
+  const canLogin = !hasLoggedIn && loginAllowed;
   const canLogout = hasLoggedIn && !hasLoggedOut;
 
-  const getTimeStatus = () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    
-    if (timeStr <= '09:00') return { status: 'on-time', color: 'text-green-600', message: 'You are on time!' };
-    if (timeStr <= '09:15') return { status: 'slightly-late', color: 'text-yellow-600', message: 'Slightly late, but within grace period' };
-    if (timeStr <= '10:00') return { status: 'late', color: 'text-orange-600', message: 'You are late. Please login to start work.' };
-    return { status: 'very-late', color: 'text-red-600', message: 'Very late. You can still login and work.' };
-  };
-
-  const timeStatus = getTimeStatus();
+  const timeStatus = getLoginTimeMessage();
 
   return (
     <div className="space-y-6 p-6 bg-background" data-testid="page-attendance">
@@ -332,6 +359,16 @@ export default function Attendance() {
               )}
             </Button>
           </div>
+
+          {showPointsAnimation && (
+            <div className="flex items-center justify-center p-6 animate-bounce">
+              <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white rounded-full px-8 py-4 shadow-lg text-2xl font-bold flex items-center gap-2">
+                <Star className="h-8 w-8 animate-spin" />
+                +{pointsEarned} Points!
+                <Trophy className="h-8 w-8 animate-pulse" />
+              </div>
+            </div>
+          )}
 
           {hasLoggedIn && !hasLoggedOut && (
             <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20" data-testid="alert-logout-reminder">
