@@ -78,15 +78,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const filteredBottomNavItems = isSuperAdmin ? superAdminBottomNavItems : bottomNavItems;
 
   useEffect(() => {
-    if (isCompanyAdmin && user && !(user as any).companyProfileComplete) {
-      setShowProfileSetup(true);
+    if (isCompanyAdmin && user && companyId) {
+      const profileCompleteKey = `companyProfileComplete_${companyId}`;
+      const isProfileComplete = localStorage.getItem(profileCompleteKey) === 'true';
+      
+      if (!isProfileComplete && !(user as any).companyProfileComplete) {
+        setShowProfileSetup(true);
+      }
     }
-  }, [isCompanyAdmin, user]);
+  }, [isCompanyAdmin, user, companyId]);
 
   const handleProfileSetupComplete = () => {
     setShowProfileSetup(false);
-    if (user) {
-      setUser({ ...user, companyProfileComplete: true } as any);
+    if (user && companyId) {
+      const updatedUser = { ...user, companyProfileComplete: true };
+      setUser(updatedUser as any);
+      
+      const profileCompleteKey = `companyProfileComplete_${companyId}`;
+      localStorage.setItem(profileCompleteKey, 'true');
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
     }
   };
 
