@@ -301,11 +301,11 @@ export default function AttendanceOverview() {
                       </div>
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={performer.photoURL || ''} />
-                        <AvatarFallback>{performer.displayName[0]}</AvatarFallback>
+                        <AvatarFallback>{performer.displayName?.[0] || 'U'}</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium" data-testid={`performer-name-${index}`}>
-                          {performer.displayName}
+                          {performer.displayName || 'Unknown User'}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {performer.currentStreak} day streak
